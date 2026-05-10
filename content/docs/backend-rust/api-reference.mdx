@@ -1,0 +1,75 @@
+---
+title: API Reference
+description: Complete OpenAPI specification for Rust backend endpoints
+---
+
+## Overview
+
+The Rust backend exposes two API surface areas:
+
+1. **Public API** (`/api/v1/*`) — Authenticationenticated endpoints for gamification features
+2. **Internal API** (`/api/internal/*`) — Java synchronization endpoints with API key auth
+
+## Public API: /api/v1
+
+<Cards>
+<Card title="Clans">
+POST/GET clans, join, leaderboard queries
+</Card>
+<Card title="Missions">
+GET daily missions, POST claim reward
+</Card>
+<Card title="Achievements">
+GET user achievements and progress
+</Card>
+</Cards>
+
+## Internal API: /api/internal
+
+<Cards>
+<Card title="User Sync">
+POST /users/sync — Idempotent shadow user creation
+</Card>
+<Card title="Quiz Sync">
+POST /quiz-history/sync — Quiz result sync with gamification trigger
+</Card>
+</Cards>
+
+## Authentication
+
+| Endpoint | Auth Type | Token Source |
+|----------|-----------|--------------|
+| `/api/v1/*` | Bearer (JWT) | `Authorization: Bearer <token>` |
+| `/api/internal/*` | API Key | `X-API-Key: <secret>` |
+| gRPC | mTLS (optional) | Certificate auth |
+
+## Response Format
+
+Consistent wrapper across all endpoints:
+
+```json
+{
+  "success": true,
+  "message": "Operation completed",
+  "data": {}
+}
+```
+
+Error responses:
+
+```json
+{
+  "success": false,
+  "message": "Invalid API key",
+  "data": null
+}
+```
+
+## Rate Limiting
+
+- Public API: 100 requests/minute per user
+- Internal API: 500 requests/minute per API key
+
+## OpenAPI Spec
+
+Available at: `http://localhost:8081/api-docs/openapi.json`

@@ -1,0 +1,411 @@
+---
+title: Development Setup
+description: Step-by-step setup for local development with Docker Compose
+---
+
+
+## Prerequisites
+
+Install these before proceeding:
+
+| Tool | Command | Check |
+|------|---------|-------|
+| Java 21 | `brew install openjdk@21` | `java -version` |
+| Rust 1.85+ | `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \| sh` | `rustc --version` |
+| Node.js 22+ | `brew install node` | `node -v` |
+| Docker | [Docker Desktop](https://www.docker.com/products/docker-desktop) | `docker -v` |
+| bun | `curl -fsSL https://bun.sh/install \| bash` | `bun -v` |
+
+---
+
+## Environment Variables
+
+Each service requires specific environment variables.
+
+### Java Backend (yomu-backend-java)
+
+Create `.env` in `yomu-backend-java/`:
+
+```bash
+# Database (Docker Compose)
+DATABASE_URL=jdbc:postgresql://localhost:5432/yomu_local?user=yomu_user&password=yomu_pass
+
+# Auth
+JWT_SECRET=your-super-secret-jwt-key-change-in-production
+INTERNAL_API_KEY=internal-api-key-for-rust-sync
+RUST_ENGINE_BASE_URL=http://localhost:8081
+
+# Google OAuth (optional)
+GOOGLE_OAUTH_CLIENT_ID=your-client-id
+GOOGLE_OAUTH_CLIENT_SECRET=your-client-secret
+```
+
+### Rust Backend (yomu-backend-rust)
+
+Create `.env` in `yomu-backend-rust/`:
+
+```bash
+# Database
+DATABASE_URL=postgres://yomu_user:yomu_pass@localhost:5432/yomu_local
+
+# Redis
+REDIS_URL=redis://localhost:6379
+
+# Java backend (outbox sync)
+JAVA_CORE_URL=http://localhost:8080
+JAVA_CORE_API_KEY=internal-api-key-for-rust-sync
+
+# Logging
+RUST_LOG=info
+```
+
+### Frontend (yomu-frontend)
+
+Create `.env.local` in `yomu-frontend/`:
+
+```bash
+# API URLs
+CORE_API_BASE_URL=http://localhost:8080/api
+RUST_ENGINE_URL=http://localhost:8081/api
+
+# Auth
+AUTH_COOKIE_SECURE=false
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=your-client-id
+
+# Debug
+NEXT_PUBLIC_DEBUG=true
+```
+
+---
+
+## Step-by-Step Setup
+
+### Step 1: Clone and Install Dependencies
+
+```bash
+# Clone repository (if not already done)
+# git clone https://github.com/yourorg/yomu.git
+
+# Java backend
+cd yomu-backend-java
+./gradlew build
+
+# Rust backend
+cd ../yomu-backend-rust
+cargo build
+
+# Frontend
+cd ../yomu-frontend
+bun install
+```
+
+### Step 2: Start Infrastructure (PostgreSQL + Redis)
+
+All three services share the same Docker Compose infrastructure.
+
+```bash
+cd yomu-backend-rust
+docker compose -f docker-compose.dev.yml build
+docker compose -f docker-compose.dev.yml up -d
+```
+
+Verify containers are running:
+
+```bash
+docker compose -f docker-compose.dev.yml ps
+```
+
+Expected output:
+
+```
+Name                    Command               State           Ports
+--------------------------------------------------------------------------------------
+yomu-postgres   docker-entrypoint.sh postgres   Up      0.0.0.0:5432->5432/tcp
+yomu-redis      redis-server --appendonly ...   Up      0.0.0.0:6379->6379/tcp
+```
+
+Wait 5-10 seconds for PostgreSQL to be ready, then verify connectivity:
+
+```bash
+# Test PostgreSQL
+psql -h localhost -U yomu_user -d yomu_local -c "SELECT 1"
+
+# Test Redis
+redis-cli -h localhost ping
+```
+
+### Step 3: Run Rust Migrations
+
+```bash
+cd yomu-backend-rust
+cargo sqlx database create
+cargo sqlx migrate run
+```
+
+Verify:
+
+```bash
+cargo sqlx migrate status
+```
+
+### Step 4: Start Java Backend
+
+```bash
+cd yomu-backend-java
+./gradlew bootRun
+```
+
+Expected output:
+
+```
+Started Application in X.XXX seconds
+```
+
+Verify:
+
+```bash
+curl http://localhost:8080/health
+```
+
+Expected response:
+
+```json
+{"success":true,"message":"OK","data":{"status":"UP"}}
+```
+
+### Step 5: Start Rust Backend
+
+```bash
+cd yomu-backend-rust
+cargo run
+```
+
+Expected output:
+
+```
+Listening on http://0.0.0.0:8081
+```
+
+Verify:
+
+```bash
+curl http://localhost:8081/health
+```
+
+Expected response:
+
+```json
+{"success":true,"message":"OK","data":{}}
+```
+
+### Step 6: Start Frontend
+
+```bash
+cd yomu-frontend
+bun run dev
+```
+
+Expected output:
+
+```
+Local:   http://localhost:3000
+```
+
+Verify: Open `http://localhost:3000` in your browser.
+
+---
+
+## Docker Compose Quick Start
+
+Run all services with a single command:
+
+```bash
+# Build all images
+cd yomu-backend-rust
+docker compose -f docker-compose.dev.yml build
+
+# Start all services
+docker compose -f docker-compose.dev.yml up -d
+
+# View logs
+docker compose -f docker-compose.dev.yml logs -f
+```
+
+---
+
+## Testing Commands
+
+### Java Backend
+
+```bash
+cd yomu-backend-java
+
+# Run all tests
+./gradlew test
+
+# Run specific test class
+./gradlew test --tests "yomu.auth.AuthenticationControllerTest"
+
+# Run with coverage
+./gradlew test jacocoTestReport
+```
+
+### Rust Backend
+
+```bash
+cd yomu-backend-rust
+
+# Run all tests
+cargo test
+
+# Run specific module tests
+cargo test --package gamification --lib modules::gamification::tests
+
+# Run with coverage (requires grcov)
+cargo tarpaulin
+
+# Run nextest (slower but parallel)
+cargo nextest run
+```
+
+### Frontend
+
+```bash
+cd yomu-frontend
+
+# Build for production
+bun run build
+
+# Run type check
+bun run typecheck
+
+# Run lint (ESLint)
+bun run lint
+```
+
+---
+
+## Common Issues and Fixes
+
+### Issue 1: Port Already in Use
+
+```
+Error: Cannot start service java: Bind failed for port 8080
+```
+
+**Fix:**
+
+```bash
+# Find process using port 8080
+lsof -i :8080
+
+# Kill it
+kill -9 <PID>
+
+# Or change the port in docker-compose.dev.yml
+```
+
+### Issue 2: Rust SQLx Migration Error
+
+```
+error: configuration file not found
+```
+
+**Fix:**
+
+```bash
+# Ensure .sqlx/config.json exists
+cd yomu-backend-rust
+cargo sqlx migrate setup
+```
+
+### Issue 3: Frontend Cannot Connect to BFF
+
+```
+Error: Network error while fetching /api/v1/...
+```
+
+**Fix:**
+
+```bash
+# Ensure NEXT_PUBLIC_* variables are set correctly in .env.local
+# Restart frontend after .env changes
+bun run dev
+```
+
+### Issue 4: PostgreSQL Connection Refused
+
+```
+ERROR: database "yomu_local" is not accepting connections
+```
+
+**Fix:**
+
+```bash
+# Wait for PostgreSQL to be ready
+sleep 10
+
+# Or check PostgreSQL logs
+docker compose -f docker-compose.dev.yml logs postgres
+```
+
+---
+
+## Full Local Development Setup Diagram
+
+```mermaid
+graph TD
+    subgraph "Browser"
+        A[localhost:3000] -->|HTTPS| B[Next.js Frontend]
+    end
+
+    subgraph "Next.js (yomu-frontend)"
+        B -->|API Routes| C[Java API Handler]
+        B -->|API Routes| D[Rust API Handler]
+        B -->|Static Files| E[/public]
+    end
+
+    subgraph "Java Backend (yomu-backend-java:8080)"
+        C -->|JPA/Hibernate| F[(PostgreSQL:5432)]
+        C -->|Outbox| G[Outbox Messages]
+        G -->|Polling| H[Java Outbox Reader]
+        H -->|HTTP POST| D
+    end
+
+    subgraph "Rust Backend (yomu-backend-rust:8081)"
+        D -->|SQLx| F
+        D -->|ZADD/ZRANK| I[(Redis:6379)]
+        D -->|HTTP GET| C
+    end
+
+    subgraph "Infrastructure (Docker)"
+        F -->|Volume| J[/var/lib/postgresql/data]
+        I -->|Volume| K[/data/redis]
+    end
+```
+
+---
+
+## Development Cheat Sheet
+
+| Task | Command |
+|------|---------|
+| Start all services | `cd yomu-backend-rust && docker compose -f docker-compose.dev.yml up -d` |
+| Start Java backend | `cd yomu-backend-java && ./gradlew bootRun` |
+| Start Rust backend | `cd yomu-backend-rust && cargo run` |
+| Start frontend | `cd yomu-frontend && bun run dev` |
+| Run Java tests | `cd yomu-backend-java && ./gradlew test` |
+| Run Rust tests | `cd yomu-backend-rust && cargo test` |
+| Format Rust | `cd yomu-backend-rust && cargo fmt` |
+| Lint Rust | `cd yomu-backend-rust && cargo clippy` |
+| Build frontend | `cd yomu-frontend && bun run build` |
+
+---
+
+## Next Steps
+
+After setup is complete:
+
+1. [Design Decisions](/docs/design-decisions) — Learn about architecture and technology choices
+2. [Development Guide](/docs/development) — Overview of local development
+3. [API Reference](/docs/api) — Detailed API endpoints (coming soon)

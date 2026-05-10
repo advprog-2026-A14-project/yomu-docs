@@ -1,0 +1,8 @@
+{
+  "title": "Frontend",
+  "pages": [
+    "index",
+    "bff-auth",
+    "components"
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "title": "Architecture",
+  "pages": [
+    "index",
+    "system-design",
+    "communication",
+    "database-schema",
+    "deployment"
+  ]
+}

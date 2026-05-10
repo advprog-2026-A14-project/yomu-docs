@@ -1,0 +1,289 @@
+---
+title: User Sync Module
+description: Shadow user synchronization from Java backend via REST outbox and gRPC
+---
+
+<Callout type="note">
+The User Sync module maintains shadow user data in the Rust database, synchronized from the Java backend's Core_DB. It ensures data consistency between the primary Java application and the gamification engine.
+</Callout>
+
+## Purpose
+
+- **One-way sync**: Java → Rust (shadow users)
+- **Idempotency**: Repeated sync requests return existing records
+- **Minimal schema**: Store only what the Rust module needs to operate
+- **Dual interface**: REST for outbox sync, gRPC for future expansion
+
+## Entities
+
+```rust
+// ShadowUser: mirror of Java's user table
+#[derive(sqlx::FromRow)]
+pub struct ShadowUser {
+    pub user_id: Uuid,           // Primary key, synced from Java
+    pub total_score: i64,
+    pub created_at: DateTime<Utc>,
+}
+
+// QuizHistory: quiz result tracking
+#[derive(sqlx::FromRow)]
+pub struct QuizHistory {
+    pub id: Uuid,
+    pub user_id: Uuid,           // Foreign key to shadow_users
+    pub article_id: Uuid,
+    pub score: i32,              // 0-100 accuracy percentage
+    pub accuracy: f32,
+    pub completed_at: DateTime<Utc>,
+}
+```
+
+## Repository Trait
+
+```rust
+#[async_trait]
+pub trait UserRepository: Send + Sync {
+    async fn insert_shadow_user(
+        &self,
+        user: &ShadowUser,
+    ) -> Result<(), RepositoryError>;
+    
+    async fn exists_shadow_user(&self, user_id: Uuid) -> Result<bool, RepositoryError>;
+    
+    async fn check_exists(
+        &self,
+        user_id: Uuid,
+    ) -> Result<UserCheckResponse, RepositoryError>;
+    // Returns: { exists: bool, existing_user: Option<ShadowUser> }
+    
+    async fn insert_quiz_history(
+        &self,
+        quiz: &QuizHistory,
+    ) -> Result<(), RepositoryError>;
+    
+    async fn get_user_total_score(&self, user_id: Uuid) -> Result<i64, RepositoryError>;
+}
+```
+
+## Use Cases
+
+<Cards>
+<Card title="SyncNewUserUseCase">
+IDEMPOTENT user sync: checks existence, inserts if missing. Returns existing user on duplicate request.
+</Card>
+<Card title="SyncQuizHistoryUseCase">
+Syncs quiz result with idempotency key. Triggers gamification updates.
+</Card>
+</Cards>
+
+## Execution Flow: Idempotent User Sync
+
+<Diagram name="IdempotentUserSyncSequence">
+```mermaid
+sequenceDiagram
+    participant JavaBackend
+    participant JavaOutbox
+    participant RustController
+    participant SyncNewUserUseCase
+    participant UserRepository
+    participant PostgreSQL
+    participant Redis
+
+    JavaBackend->>JavaOutbox: INSERT outbox event (SYNC_USER)
+    JavaOutbox->>RustController: POST /api/internal/users/sync
+    
+    RustController->>SyncNewUserUseCase: Execute(SyncUserRequest)
+    
+    SyncNewUserUseCase->>UserRepository: check_exists(user_id)
+    UserRepository->>PostgreSQL: SELECT * FROM shadow_users WHERE user_id = ?
+    PostgreSQL-->>UserRepository: None (first time)
+    
+    SyncNewUserUseCase->>UserRepository: get_user_from_java_api(user_id)
+    Note over SyncNewUserUseCase: Fetch from Java API if not in outbox
+    
+    SyncNewUserUseCase->>UserRepository: insert_shadow_user(user)
+    UserRepository->>PostgreSQL: INSERT INTO shadow_users
+    PostgreSQL-->>UserRepository: Ok
+    
+    SyncNewUserUseCase->>Redis: HSET user total_score=0
+    Note over SyncNewUserUseCase: Shadow user created in Engine DB
+    SyncNewUserUseCase-->>RustController: Result: INSERTED (user_id)
+    RustController-->>JavaBackend: 201 Created
+```
+
+If duplicate request arrives:
+
+```mermaid
+sequenceDiagram
+    participant JavaBackend
+    participant RustController
+    participant SyncNewUserUseCase
+    participant UserRepository
+    participant PostgreSQL
+
+    JavaBackend->>RustController: POST /api/internal/users/sync (duplicate)
+    RustController->>SyncNewUserUseCase: Execute(SyncUserRequest same user_id)
+    SyncNewUserUseCase->>PostgreSQL: SELECT shadow_user WHERE user_id
+    PostgreSQL-->>SyncNewUserUseCase: ShadowUser found
+    SyncNewUserUseCase-->>RustController: Result: EXISTS (user_id)
+    RustController-->>JavaBackend: 200 OK
+```
+</Diagram>
+
+## Endpoints
+
+### REST API
+
+<Steps>
+<Step title="POST /api/internal/users/sync">
+Syncs a new shadow user from Java. Idempotent.
+
+Request:
+```json
+{
+  "user_id": "550e8400-e29b-41d4-a716-446655440000"
+}
+```
+
+Headers: `X-API-Key: <secret_key>`
+
+Responses:
+- `201 Created` (new user inserted)
+- `200 OK` (user already exists)
+- `401 Unauthorized` (_invalid/no API key)
+</Step>
+<Step title="POST /api/internal/quiz-history/sync">
+Syncs quiz history result.
+
+Request:
+```json
+{
+  "user_id": "550e8400-e29b-41d4-a716-446655440000",
+  "article_id": "123e4567-e89b-41d4-a716-446655440000",
+  "score": 85,
+  "accuracy": 92.5
+}
+```
+
+Responses:
+- `201 Created` (new record)
+- `200 OK` (idempotent duplicate)
+- `400 Bad Request` (invalid score/accuracy)
+</Step>
+</Steps>
+
+### gRPC Services
+
+<Cards>
+<Card title="UserSyncService">
+gRPC service for low-latency user synchronization.
+
+Methods:
+- `SyncUser(SyncUserRequest) → SyncUserResponse`
+- `GetUser(UserId) → ShadowUser`
+
+Def file: `protos/usersync.proto`
+</Card>
+<Card title="QuizSyncService">
+gRPC service for quiz result sync.
+
+Methods:
+- `SyncQuiz(QuizHistoryRequest) → SyncResult`
+- `GetUserQuizHistory(UserId) → QuizHistoryResponse`
+
+Def file: `protos/quizsync.proto`
+</Card>
+</Cards>
+
+## Proto Definitions
+
+```protobuf
+// protos/usersync.proto
+syntax = "proto3";
+
+package usersync;
+
+message SyncUserRequest {
+  string user_id = 1;
+}
+
+message SyncUserResponse {
+  bool created = 1;
+  string user_id = 2;
+}
+
+// protos/quizsync.proto
+syntax = "proto3";
+
+package quizsync;
+
+message QuizHistoryRequest {
+  string user_id = 1;
+  string article_id = 2;
+  int32 score = 3;
+  float accuracy = 4;
+}
+
+message SyncResult {
+  bool created = 1;
+  string message = 2;
+}
+```
+
+## Database Schema
+
+```sql
+-- Shadow users table
+CREATE TABLE shadow_users (
+    user_id UUID PRIMARY KEY,
+    total_score BIGINT NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Quiz history table
+CREATE TABLE quiz_history (
+    id UUID PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES shadow_users(user_id),
+    article_id UUID NOT NULL,
+    score INT NOT NULL,
+    accuracy FLOAT NOT NULL,
+    completed_at TIMESTAMPTZ NOT NULL,
+    UNIQUE(user_id, article_id)
+);
+
+-- Indexes for gamification queries
+CREATE INDEX idx_quiz_history_user ON quiz_history(user_id);
+CREATE INDEX idx_quiz_history_user_completed ON quiz_history(user_id, completed_at DESC);
+```
+
+## Idempotency Strategy
+
+1. **Database constraint**: `UNIQUE(user_id)` prevents duplicates
+2. **Upsert pattern**: `INSERT ... ON CONFLICT (user_id) DO NOTHING`
+3. **Redis cache**: Short-lived cache of recently synced user IDs
+
+```rust
+// Idempotent insert
+match repository.check_exists(user_id).await? {
+    true => Ok(Response::new(user)),   // Already exists
+    false => {
+        user_repo.insert_shadow_user(&user).await?;
+        Ok(Response::new(user))         // Inserted
+    }
+}
+```
+
+## Testing
+
+- **Unit**: ` UserRepository` mocked with `mockall`
+- **Integration**: Full stack with PostgreSQL + Redis
+- **Idempotency**: Repeated sync requests return consistent results
+- **Validation**: Invalid scores rejected before database insert
+
+## Error Handling
+
+| Error | Code | Message |
+|-------|------|---------|
+| `UserAlreadyExists` | 409 | User already synchronized |
+| `InvalidScore` | 400 | Score must be between 0 and 100 |
+| `InvalidAccuracy` | 400 | Accuracy must be between 0.0 and 100.0 |
+| `ApiKeyInvalid` | 401 | Invalid or missing API key |

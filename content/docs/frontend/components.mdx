@@ -1,0 +1,192 @@
+---
+title: UI Components
+description: shadcn/ui component library and custom components
+---
+
+# UI Components
+
+The frontend uses shadcn/ui (new-york style) as its primary component library, augmented with custom components for domain-specific functionality.
+
+## shadcn/ui Component Library
+
+55+ pre-built, accessible components installed with the new-york design system:
+
+### Form Elements
+
+- `Button`, `Input`, `Textarea`, `Select`, `Switch`, `Checkbox`, `RadioGroup`, `Slider`, `Form`, `Label`, `FormField`
+
+### Layout
+
+- `Card`, `Tabs`, ` Accordion`, `Collapsible`, `Dialog`, `Sheet`, `Popover`, `Tooltip`
+
+### Navigation
+
+- `Navbar`, `Sidebar`, `Breadcrumb`, `Link`, `Menubar`
+
+### Feedback
+
+- `Toast`, `Alert`, `Alert Dialog`, `Sonner` (notifications)
+
+### Data Display
+
+- `Table`, `Badge`, `Avatar`, `Progress`, `Skeleton`, `Carousel`, `Calendar`
+
+### Overlays
+
+- `Modal`, `Drawer`, `Hover Card`, `Menu`
+
+All components use:
+- Lucide icons via `lucide-react`
+- Tailwind v4 with CSS variables
+- Dark mode support
+- `cn()` utility for class composition
+
+## Custom Components
+
+### GoogleLoginButton
+
+Google One Tap login integration:
+
+```typescript
+'use client';
+
+import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
+
+export function GoogleLoginButton() {
+  return (
+    <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!}>
+      <GoogleLogin
+        onSuccess={handleLoginSuccess}
+        onError={handleLoginError}
+        useOneTap
+      />
+    </GoogleOAuthProvider>
+  );
+}
+```
+
+### ReadingCatalog
+
+Article browser with categorization:
+
+- **Features**: Filter by category, search, pagination
+- **Data**: Mock data structure with `id`, `title`, `author`, `category`
+- **Interaction**: Click to navigate to `/bacaankuis/[id]`
+
+### ReadingQuizExperience
+
+Quiz interface for reading completion:
+
+- **Progress bar**: Visual completion indicator
+- **Sticky action bar**: Submit button always visible
+- **Question navigation**: Jump between questions
+- **Submit handling**: Final submission with validation
+
+### CommentForm
+
+Comment submission component:
+
+- **Fields**: Content textarea, anonymous toggle
+- **Validation**: Zod schema validation
+- **Submitting**: Disabled state during submit
+
+### CommentList
+
+Recursive comment threading with social features:
+
+- **Tier badges**: Level-based user hierarchy
+- **Clan display**: Clan tag and badge per comment
+- **Reply forms**: Nested comment composition
+- **Reaction toggles**: Like/dislike interaction
+- **Delete button**: User-initiated removal
+
+## Form Handling
+
+All forms use React Hook Form with Zod validation:
+
+```typescript
+import { z } from 'zod';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+
+const loginSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8),
+});
+
+type LoginForm = z.infer<typeof loginSchema>;
+
+function LoginForm() {
+  const form = useForm<LoginForm>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { email: '', password: '' },
+  });
+
+  function onSubmit(data: LoginForm) {
+    // Submit to /api/v1/auth/login
+  }
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)}>
+        <FormField
+          control={form.control}
+          name="email"
+          render={() => <Input />}
+        />
+        {/* ... */}
+      </form>
+    </Form>
+  );
+}
+```
+
+## Styling System
+
+**Tailwind v4 features**:
+- CSS variables for design token management
+- `@layer base, components, utilities` directives
+- `dark:` prefix for dark mode variants
+- OKLCH colors for accessible color palettes
+
+**Configuration**:
+```css
+@import 'tailwindcss';
+
+:root {
+  --background: 0 0% 100%;
+  --foreground: 20 14.3% 4.1%;
+  --primary: 24 9.8% 10%;
+  /* ... */
+}
+
+.dark {
+  --background: 20 14.3% 4.1%;
+  --foreground: 60 9.1% 97.8%;
+}
+```
+
+## Empty Stubs and Anti-Patterns
+
+### Empty Dashboard Pages
+
+The following routes are placeholders and need implementation:
+
+- `/dashboard/clans` — Clan management
+- `/dashboard/missions` — Mission tracking
+- `/dashboard/achievements` — Achievement showcase
+- `/dashboard/leaderboard` — Leaderboard display
+
+### Feature Action Stubs
+
+Empty action modules requiring implementation:
+
+- `src/features/league/actions.ts`
+- `src/features/gamification/actions.ts`
+- `src/features/auth/actions.ts`
+
+### Anti-Patterns
+
+**Direct fetch from test-java**: Page at `/app/test-java/page.tsx` makes direct `fetch('http://localhost:8080')` calls, violating BFF pattern.
+
+**Duplicate auth routes**: Both `/app/auth/` and `/app/(auth)/` directories exist, creating route duplication.

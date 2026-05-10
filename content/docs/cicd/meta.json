@@ -1,0 +1,9 @@
+{
+  "title": "CI/CD",
+  "pages": [
+    "index",
+    "java-pipeline",
+    "rust-pipeline",
+    "frontend-pipeline"
+  ]
+}

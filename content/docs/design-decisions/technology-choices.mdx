@@ -1,0 +1,365 @@
+---
+title: Technology Choices
+description: Why we chose Java, Rust, Next.js, PostgreSQL, Redis, and other technologies
+---
+
+
+## Why Java + Spring Boot for Auth/Content
+
+### Why We Chose It
+
+Java 21 with Spring Boot 4.0.2 is the backbone of Yomu's backend. We selected it for:
+
+- **Mature ecosystem** — Spring Security, Spring Data JPA/Hibernate, extensive integration patterns
+- **Enterprise-grade reliability** — Battle-tested in production at scale
+- **Massive hiring pool** — Java developers are abundant globally
+- **Strong tooling** — IntelliJ IDEA, Gradle, and excellent debugging support
+
+### Pros
+
+- Robust Spring Security ecosystem for authentication and authorization
+- JPA/Hibernate abstracts complex SQL while maintaining tuneability
+- Gradle Kotlin DSL provides readable build configuration
+- Excellent IDE support with minimal configuration
+- Large community, extensive documentation, Stack Overflow answers for most problems
+
+### Cons
+
+- Slower cold start times compared to newer JVM languages
+- Higher memory footprint (though mitigated by modern JVM GC tuning)
+- Verbose syntax compared to Kotlin or Scala
+- Annual Spring Boot release cadence requires upgrade planning
+
+### Alternatives Considered
+
+| Alternative | Decision |
+|-------------|----------|
+| Kotlin | Chose Java for broader team familiarity and hiring pool |
+| Go | Elegant language but lacked Spring ecosystem maturity for our complex auth flows |
+| Node.js | GC pauses during high-concurrency auth operations were unacceptable |
+| Python | Hiring and performance concerns for production authentication |
+
+### When We'd Switch
+
+We would consider moving away from Java if:
+
+- Startup time becomes critical (e.g., serverless deployments with cold starts < 100ms)
+- We need to reduce memory footprint significantly
+- Team skill shift favors Kotlin (then we'd migrate gradually)
+
+---
+
+## Why Rust + Axum for Gamification
+
+### Why We Chose It
+
+Rust 1.85+ (Edition 2024) with Axum 0.8.8 powers our gamification engine. We chose it for:
+
+- **Zero-cost abstractions** — Runtime performance equals C++, without GC pauses
+- **Memory safety without garbage collection** — Perfect for game loops that can't afford GC-induced lag
+- **Excellent async performance** — Tokio runtime handles thousands of concurrentconnections
+- **Strong type system** — Compile-time guarantees prevent entire classes of bugs
+
+### Pros
+
+- Blazing-fast performance (single-digit millisecond response times for leaderboard queries)
+- No GC pauses — critical for real-time score updates
+- Memory safety without runtime overhead
+- Powerful type system catches bugs at compile time
+- Excellent concurrency primitives (futures, async/await)
+
+### Cons
+
+- Steeper learning curve, especially for developers new to systems programming
+- Longer compile times (though mitigated by cargo build caching and watch mode)
+- Smaller ecosystem than Java or JavaScript
+- No runtime reflection or dynamic dispatch (mitigated by traits and dynamic dispatch via `dyn`)
+
+### Alternatives Considered
+
+| Alternative | Decision |
+|-------------|----------|
+| Go | Faster development but less performant for our high-frequency score operations |
+| C++ | Unsafe memory management - unacceptable for production game data |
+| Node.js | GC pauses during leaderboard recalculations would cause user-visible stutter |
+| Scala | JVM overhead and complexity not worth it for this high-performance workload |
+
+### When We'd Switch
+
+We would consider alternatives if:
+
+- Hiring Rust developers becomes prohibitively difficult
+- Tooling ecosystem significantly lags behind Java/Go for our use case
+
+---
+
+## Why Axum Specifically (Not Actix-web)
+
+### Why We Chose Axum
+
+Axum 0.8.8 is our Rust web framework of choice. We selected it over Actix-web because:
+
+- **Tower middleware ecosystem** — Reuse existing Tower middleware (e.g., CORS, compression)
+- **Ergonomic extractors** — Type-safe request parsing with zero runtime overhead
+- **Active Tokio team maintenance** — Backed by the team behind async Rust
+
+### Pros
+
+- Built on proven Tower abstractions (middleware, service, hyper)
+- Extractors are type-safe and composable (e.g., `Json<T>`, `State<AppState>`, `Query<T>`)
+- Small, focused crate — easy to understand and extend
+- First-class async support (noblocking, zero-copy parsing)
+
+### Cons
+
+- Newer than Actix-web (fewer third-party examples in the wild)
+- Smaller community compared to Actix (but growing rapidly)
+
+### Alternatives Considered
+
+| Alternative | Decision |
+|-------------|----------|
+| Actix-web | More mature but steeper learning curve, different middleware model (less composable) |
+| Poem | Feature-rich but smaller community, less documentation |
+| Warp | Powerful but complex type system, harder to onboard devs |
+
+### Decision Rationale
+
+Axum's Tower integration gave us:
+
+- Reusable middleware from the ecosystem (e.g., `tower-http` for CORS, compression, tracing)
+- Extractor composition that matched our Rust style (strong typing, compile-time safety)
+- Alignment with the Tokio team's vision for async Rust
+
+We prioritized ergonomic correctness over maturity for this greenfield project.
+
+---
+
+## Why SQLx (Not Diesel/SeaORM)
+
+### Why We Chose SQLx
+
+SQLx is our async Rust ORM/query builder. We selected it for:
+
+- **Compile-time query checking** — SQL syntax checked at compile time with `sqlx check`
+- **Async-native** — Built from the ground up for async/await
+- **No ORM overhead** — Direct SQL power without abstraction leaks
+- **Offline mode** — Pre-generate SQL queries for offline development
+
+### Pros
+
+- Compile-time SQL validation (`sqlx check` runs before compilation)
+- No runtime ORM overhead — direct mapping to Rust structs
+- Type-safe queries with parameter binding
+- Multi-database support (PostgreSQL, MySQL, SQLite)
+- `sqlx migrate` for versioned migrations
+- Offline mode (pre-generate query plans)
+
+### Cons
+
+- Manual SQL required (no automatic migrations)
+- Less abstraction than full ORMs (Diesel, SeaORM)
+- Learning curve for SQLx's query macros
+
+### Alternatives Considered
+
+| Alternative | Decision |
+|-------------|----------|
+| Diesel | Sync API — too slow for gamification (no async support) |
+| SeaORM | Async ORM but younger community, slight abstraction leaks |
+| Tokio-postgres | Too low-level — we wanted query validation + convenience macros |
+
+### Decision Rationale
+
+SQLx strikes the perfect balance:
+
+- Compile-time safety (unlike raw `tokio-postgres`)
+- Full SQL control (unlikeSeaORM's abstraction)
+- Async-first design (unlike Diesel)
+
+For our performance-critical gamification module, we needed both speed and safety — SQLx delivers both.
+
+---
+
+## Why Next.js (Not Pure React/Vite)
+
+### Why We Chose Next.js
+
+Next.js 16.1.6 is Yomu's frontend framework. We selected it for:
+
+- **BFF pattern built-in** — API routes on same domain, shared cookies
+- **SSR/SSG support** — Dynamic content and static generation
+- **File-based routing** — No router boilerplate
+- **Standalone output** — Optimized production builds for Docker
+- **Massive ecosystem** — Shadcn/ui, React Hook Form, Zod, Tailwind CSS
+
+### Pros
+
+- API routes provide Backend-for-Frontend pattern natively
+- SSR for SEO and initial render performance
+- SSG for static content (help docs, pricing)
+- File-based routing with dynamic segments
+- Incremental Static Regeneration (ISR) for near-real-time content
+- Next.js App Router with Server Components
+- Standalone output mode for reproducible Docker builds
+
+### Cons
+
+- Complex caching model (can be confusing for beginners)
+- Server/client boundary can blur (requires intentional architecture)
+- Heavier than pure Vite SPA (though mitigated by code splitting)
+
+### Alternatives Considered
+
+| Alternative | Decision |
+|-------------|----------|
+| Remix | Newer, less ecosystem, smaller community |
+| Vite SPA | No built-in BFF, need separate backend |
+| Astro | Content-focused, less interactive application support |
+
+### Decision Rationale
+
+Next.js provides:
+
+- **BFF pattern without setup** — API routes are just files in `src/app/api/`
+- **Shared authentication** — Same cookies for frontend and API routes
+- **RSC/Server Components** — Better performance, less JavaScript on client
+- **Production readiness** — Standalone output, optimized images, fonts
+
+We chose Next.js because it solved our "glue layer" problem natively.
+
+---
+
+## Why PostgreSQL (Not MySQL/MongoDB)
+
+### Why We Chose PostgreSQL
+
+PostgreSQL 16+ (Java) and 17+ (Rust) is our primary database. We selected it because:
+
+- **ACID compliance** — Strong consistency guarantees
+- **JSON support** — Native `JSONB` type for flexible schemas
+- **Strong SQL standards** — Rich query language, CTEs, window functions
+- **Excellent tooling** — pgAdmin, psql, pg_dump, logical replication
+
+### Pros
+
+- Strong ACID compliance
+- JSONB for hybrid relational/document storage
+- Excellent concurrent write support
+- Rich SQL features (CTEs, window functions, full-text search)
+- Battle-tested in production
+
+### Cons
+
+- Slightly more complex than MySQL for basic setups
+- Resource heavier than SQLite (irrelevant for production)
+
+### Decision Rationale
+
+PostgreSQL is our default relational database choice. The JSONB support was particularly valuable for the outbox pattern and gamification metadata storage.
+
+We evaluated MongoDB but rejected it for:
+
+- Need for ACID compliance
+- Existing PostgreSQL infrastructure
+
+---
+
+## Why Redis for Leaderboards
+
+### Why We Chose Redis
+
+Redis 8+ is our caching and leaderboard storage. We selected it for:
+
+- **Sorted sets natively support leaderboards** — `ZADD`, `ZRANK`, `ZREVRANK`
+- **Sub-millisecond latency** — In-memory performance essential for real-time games
+- **Atomic operations** — `MULTI`/`EXEC` for consistent updates
+
+### Pros
+
+- Native sorted sets — perfect for leaderboard use cases
+- Sub-millisecond query latency
+- Atomic operations (no race conditions)
+- Pub/Sub for real-time score updates
+- Replication and persistence options
+
+### Cons
+
+- Memory cost (data must fit in RAM)
+- Data loss risk without persistence configuration
+- Operational overhead (monitoring, tuning)
+
+### Alternatives Considered
+
+| Alternative | Decision |
+|-------------|----------|
+| PostgreSQL window functions | Slower at scale, no real-time |
+| In-memory in Rust | Single-node, no replication |
+| Memcached | No sorted sets, limited features |
+
+### Decision Rationale
+
+Redis is THE standard for leaderboards. Its sorted sets provide:
+
+- **ZADD** — Add scores atomically
+- **ZREVRANK** — Get player rank in descending order
+- **ZREMRANGEBYRANK** — Trim leaderboards efficiently
+
+No other solution matched Redis's combination of speed and_features for this specific use case.
+
+---
+
+## Why Tailwind CSS v4 (Not CSS Modules/styled-components)
+
+### Why We Chose Tailwind CSS v4
+
+Tailwind CSS v4 is our styling framework. We selected it because:
+
+- **Utility-first approach** — Component-local styles, no naming collisions
+- **Zero-runtime** — No JavaScript overhead at runtime
+- **Consistent design tokens** — Unified design system
+- **shadcn/ui integration** — Required for our UI component library
+
+### Pros
+
+- Component-local styling (no global CSS cascade)
+- No class name collisions
+- Rapid development with utility classes
+- Zero-runtime (styles are pre-generated)
+- Consistent spacing, colors, typography via design tokens
+- shadcn/ui requires Tailwind (deep integration)
+
+### Cons
+
+- Verbose `className` attributes
+- Learning curve for utility-first mindset
+- Some developers prefer CSS-in-JS ergonomics
+
+### Decision Rationale
+
+We chose Tailwind because:
+
+- shadcn/ui (our UI library) requires Tailwind
+- Utility-first approach prevents CSS bloat
+- v4's `@layer base` and `@layer components` improve maintainability
+
+---
+
+## Summary
+
+| Layer | Technology | Why |
+|-------|-----------|-----|
+| Backend Auth | Java 21 + Spring Boot 4.0.2 | Mature ecosystem, security, ease of hiring |
+| Backend Gamification | Rust 1.85+ (Edition 2024) + Axum 0.8.8 | Performance, memory safety, async |
+| Database | PostgreSQL 16/17 | ACID, JSON support, tooling |
+| Cache/Leaderboard | Redis 8 | Sorted sets, sub-ms latency |
+| Frontend | Next.js 16.1.6 | BFF, SSR, file-based routing |
+| Styling | Tailwind CSS v4 | Utility-first, shadcn/ui, zero-runtime |
+
+Each technology choice reflects our commitment to:
+
+- **Performance** — Rust for gamification, Redis for leaderboards
+- **Reliability** — Java for auth, PostgreSQL for data
+- **Developer velocity** — Next.js for frontend, Tailwind for rapid UI development
+
+The polyglot approach lets us optimize each service for its specific workload.

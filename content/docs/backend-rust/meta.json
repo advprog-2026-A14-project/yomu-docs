@@ -1,0 +1,9 @@
+{
+  "title": "Rust Backend",
+  "pages": [
+    "index",
+    "league",
+    "gamification",
+    "user-sync"
+  ]
+}

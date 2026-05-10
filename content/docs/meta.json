@@ -1,0 +1,16 @@
+{
+  "title": "Yomu Docs",
+  "pages": [
+    "index",
+    "---Architecture---",
+    "architecture",
+    "---Services---",
+    "backend-java",
+    "backend-rust",
+    "frontend",
+    "---Operations---",
+    "cicd",
+    "design-decisions",
+    "development"
+  ]
+}
