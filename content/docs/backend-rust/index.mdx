@@ -135,25 +135,55 @@ Rust's zero-cost abstractions make it an ideal language for Clean Architecture. 
 
 ### What is Clean Architecture?
 
-Clean Architecture is a design philosophy that organizes code into concentric circles, with dependencies pointing inward:
+Clean Architecture is a design philosophy proposed by Robert C. Martin (Uncle Bob) that organizes code into concentric circles, with the **Dependency Rule** as its cornerstone: **dependencies must always point inward**. Inner layers know nothing about outer layers.
 
+```mermaid
+graph TD
+    subgraph OUTER["🔷 Presentation Layer (Delivery Mechanism)"]
+        P1[Axum Controllers]
+        P2[gRPC Handlers]
+        P3[Middleware / Filters]
+    end
+    subgraph APP["🟢 Application Layer (Business Orchestration)"]
+        A1[Use Cases / Interactors]
+        A2[DTOs — Request / Response]
+        A3[Application Services]
+    end
+    subgraph DOM["🔴 Domain Layer (Core Business Logic)"]
+        D1[Entities & Aggregates]
+        D2[Value Objects]
+        D3[Repository Ports — Traits]
+        D4[Domain Errors — thiserror]
+    end
+    subgraph INF["🟡 Infrastructure Layer (Technical Detail)"]
+        I1[PostgreSQL Repositories]
+        I2[Redis Cache Adapters]
+        I3[HTTP Clients — reqwest]
+        I4[External Service Clients]
+    end
+
+    P1 --> A1
+    P2 --> A1
+    A1 --> D1
+    A1 --> D3
+    A2 --> D2
+    D3 -.-> I1
+    D3 -.-> I2
+    D3 -.-> I3
+
+    style OUTER fill:#e0f2fe,stroke:#0ea5e9,stroke-width:2px,color:#0c4a6e
+    style APP fill:#dcfce7,stroke:#22c55e,stroke-width:2px,color:#14532d
+    style DOM fill:#fee2e2,stroke:#ef4444,stroke-width:2px,color:#7f1d1d
+    style INF fill:#fef9c3,stroke:#eab308,stroke-width:2px,color:#713f12
 ```
-┌─────────────────────────────────────┐
-│      Presentation Layer             │
-│  (Axum, gRPC, Middleware)          │
-└──────────────┬──────────────────────┘
-               │ depends on
-┌──────────────▼──────────────────────┐
-│      Application Layer              │
-│  (Use Cases, DTOs)                 │
-└──────────────┬──────────────────────┘
-               │ depends on
-┌──────────────▼──────────────────────┐
-│      Domain Layer                   │
-│  (Entities, Value Objects,        │
-│   Repository Traits, Errors)       │
-└─────────────────────────────────────┘
-```
+
+**The Dependency Rule** dictates that:
+- **Domain** knows nothing about HTTP, SQL, JSON, or frameworks
+- **Application** knows about Domain, but not about Axum or PostgreSQL
+- **Infrastructure** implements the Ports (traits) defined by Domain
+- **Presentation** depends on Application to execute use cases
+
+This inversion of dependencies means our business logic is **framework-agnostic**. We can replace Axum with Actix-web, SQLx with Diesel, or PostgreSQL with SQLite — without touching a single line of domain or application code.
 
 **The Dependency Rule**: Inner circles (domain) must never depend on outer circles (infrastructure/presentation). This means domain code knows nothing about HTTP, databases, or frameworks.
 
