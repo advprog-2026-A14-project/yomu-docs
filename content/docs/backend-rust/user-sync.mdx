@@ -1,18 +1,18 @@
 ---
 title: User Sync Module
-description: Shadow user synchronization from Java backend via REST outbox and gRPC
+description: Sinkronisasi shadow user dari backend Java melalui REST outbox dan gRPC
 ---
 
 <Callout type="note">
-The User Sync module maintains shadow user data in the Rust database, synchronized from the Java backend's Core_DB. It ensures data consistency between the primary Java application and the gamification engine.
+User Sync module memelihara data shadow user di database Rust, yang disinkronisasi dari Core_DB backend Java. Module ini memastikan konsistensi data antara aplikasi Java utama dan engine gamifikasi.
 </Callout>
 
-## Purpose
+## Tujuan
 
 - **One-way sync**: Java → Rust (shadow users)
-- **Idempotency**: Repeated sync requests return existing records
-- **Minimal schema**: Store only what the Rust module needs to operate
-- **Dual interface**: REST for outbox sync, gRPC for future expansion
+- **Idempotency**: Request sync berulang mengembalikan record yang sudah ada
+- **Minimal schema**: Hanya menyimpan apa yang diperlukan module Rust
+- **Dual interface**: REST untuk outbox sync, gRPC untuk ekspansi di masa depan
 
 ## Entities
 
@@ -68,10 +68,10 @@ pub trait UserRepository: Send + Sync {
 
 <Cards>
 <Card title="SyncNewUserUseCase">
-IDEMPOTENT user sync: checks existence, inserts if missing. Returns existing user on duplicate request.
+Sync user IDEMPOTEN: memeriksa keberadaan, insert jika tidak ada. Mengembalikan user yang sudah ada pada request duplikat.
 </Card>
 <Card title="SyncQuizHistoryUseCase">
-Syncs quiz result with idempotency key. Triggers gamification updates.
+Sinkronisasi hasil kuis dengan idempotency key. Memicu update gamifikasi.
 </Card>
 </Cards>
 
@@ -98,19 +98,18 @@ sequenceDiagram
     PostgreSQL-->>UserRepository: None (first time)
     
     SyncNewUserUseCase->>UserRepository: get_user_from_java_api(user_id)
-    Note over SyncNewUserUseCase: Fetch from Java API if not in outbox
-    
+    Note over SyncNewUserUseCase: Ambil dari Java API jika tidak ada di outbox
     SyncNewUserUseCase->>UserRepository: insert_shadow_user(user)
     UserRepository->>PostgreSQL: INSERT INTO shadow_users
     PostgreSQL-->>UserRepository: Ok
     
     SyncNewUserUseCase->>Redis: HSET user total_score=0
-    Note over SyncNewUserUseCase: Shadow user created in Engine DB
+    Note over SyncNewUserUseCase: Shadow user dibuat di Engine DB
     SyncNewUserUseCase-->>RustController: Result: INSERTED (user_id)
     RustController-->>JavaBackend: 201 Created
 ```
 
-If duplicate request arrives:
+Jika request duplikat tiba:
 
 ```mermaid
 sequenceDiagram
@@ -135,7 +134,7 @@ sequenceDiagram
 
 <Steps>
 <Step title="POST /api/internal/users/sync">
-Syncs a new shadow user from Java. Idempotent.
+Sinkronisasi shadow user baru dari Java. Idempoten.
 
 Request:
 ```json
@@ -152,7 +151,7 @@ Responses:
 - `401 Unauthorized` (_invalid/no API key)
 </Step>
 <Step title="POST /api/internal/quiz-history/sync">
-Syncs quiz history result.
+Mensinkronisasi hasil quiz history.
 
 Request:
 ```json
@@ -175,7 +174,7 @@ Responses:
 
 <Cards>
 <Card title="UserSyncService">
-gRPC service for low-latency user synchronization.
+gRPC service untuk sinkronisasi user low-latency.
 
 Methods:
 - `SyncUser(SyncUserRequest) → SyncUserResponse`
@@ -184,7 +183,7 @@ Methods:
 Def file: `protos/usersync.proto`
 </Card>
 <Card title="QuizSyncService">
-gRPC service for quiz result sync.
+gRPC service untuk sinkronisasi hasil kuis.
 
 Methods:
 - `SyncQuiz(QuizHistoryRequest) → SyncResult`
@@ -255,11 +254,11 @@ CREATE INDEX idx_quiz_history_user ON quiz_history(user_id);
 CREATE INDEX idx_quiz_history_user_completed ON quiz_history(user_id, completed_at DESC);
 ```
 
-## Idempotency Strategy
+## Strategi Idempotency
 
-1. **Database constraint**: `UNIQUE(user_id)` prevents duplicates
+1. **Database constraint**: `UNIQUE(user_id)` mencegah duplikat
 2. **Upsert pattern**: `INSERT ... ON CONFLICT (user_id) DO NOTHING`
-3. **Redis cache**: Short-lived cache of recently synced user IDs
+3. **Redis cache**: Short-lived cache dari user ID yang baru disinkronisasi
 
 ```rust
 // Idempotent insert
@@ -274,10 +273,10 @@ match repository.check_exists(user_id).await? {
 
 ## Testing
 
-- **Unit**: ` UserRepository` mocked with `mockall`
-- **Integration**: Full stack with PostgreSQL + Redis
-- **Idempotency**: Repeated sync requests return consistent results
-- **Validation**: Invalid scores rejected before database insert
+- **Unit**: `UserRepository` di-mock dengan `mockall`
+- **Integration**: Full stack dengan PostgreSQL + Redis
+- **Idempotency**: Request sync berulang mengembalikan hasil yang konsisten
+- **Validation**: Score tidak valid ditolak sebelum database insert
 
 ## Error Handling
 

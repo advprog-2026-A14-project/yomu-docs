@@ -1,30 +1,30 @@
 ---
-title: Java Backend
-description: Spring Boot 4 backend — authentication, user management, articles, quizzes, and forum with outbox sync to Rust engine
+title: Backend Java
+description: Backend Spring Boot 4 — autentikasi, manajemen pengguna, artikel, kuis, dan forum dengan sinkronisasi outbox ke engine Rust
 ---
 
 
 <Callout type="info">
-Spring Boot 4.0.2 with Java 21, Gradle Kotlin DSL. Deployment: Heroku (prod/staging) + Docker. The Java backend serves as the primary API gateway and handles authentication, user management, content (articles/quizzes), forum features, and synchronization with the Rust gamification engine via outbox pattern.
+Spring Boot 4.0.2 dengan Java 21, Gradle Kotlin DSL. Deployment: Heroku (prod/staging) + Docker. Backend Java berfungsi sebagai API gateway utama dan menangani autentikasi, manajemen pengguna, konten (artikel/kuis), fitur forum, dan sinkronisasi dengan engine gamifikasi Rust melalui pattern outbox.
 </Callout>
 
 ## Tech Stack
 
-- **Framework**: Spring Boot 4.0.2 with Java 21
+- **Framework**: Spring Boot 4.0.2 dengan Java 21
 - **Build Tool**: Gradle Kotlin DSL
-- **Database**: PostgreSQL with HikariCP connection pooling
-- **Security**: Spring Security with JWT token authentication
-- **Code Quality**: Lombok, PMD 7.0.0 (priority 5), JaCoCo coverage
-- **Security Scanning**: OWASP Dependency-Check (fail on CVSS 9.0+)
-- **Docker**: Multi-stage builds using `eclipse-temurin:21-jdk` and `eclipse-temurin:21-jre`
+- **Database**: PostgreSQL dengan connection pooling HikariCP
+- **Security**: Spring Security dengan autentikasi token JWT
+- **Code Quality**: Lombok, PMD 7.0.0 (priority 5), cakupan JaCoCo
+- **Security Scanning**: OWASP Dependency-Check (gagal pada CVSS 9.0+)
+- **Docker**: Multi-stage build menggunakan `eclipse-temurin:21-jdk` dan `eclipse-temurin:21-jre`
 
 <Callout type="warning">
-The `bacaankuis` module's `BacaanKuisController` is marked as deprecated. Use `ArticleController` and `QuizController` instead.
+`BacaanKuisController` pada modul `bacaankuis` sudah ditandai sebagai deprecated. Gunakan `ArticleController` dan `QuizController` sebagai gantinya.
 </Callout>
 
-## Package Structure
+## Struktur Package
 
-The backend follows Clean Architecture principles with clear layer separation:
+Backend mengikuti prinsip Clean Architecture dengan pemisahan layer yang jelas:
 
 ```mermaid
 graph TD
@@ -101,9 +101,9 @@ graph TD
     GLC --> RLC
 ```
 
-\* `BacaanKuisController` is deprecated — use `ArticleController` and `QuizController` instead
+\* `BacaanKuisController` sudah deprecated — gunakan `ArticleController` dan `QuizController` sebagai gantinya
 
-## Key Dependencies
+## Dependensi Utama
 
 | Category | Dependency | Version |
 |----------|-----------|---------|
@@ -119,45 +119,45 @@ graph TD
 | Coverage | jacoco-maven-plugin | - |
 | Security | dependency-check-maven | 9.0.0 |
 
-## API Response Convention
+## Konvensi API Response
 
-All API responses use the `ApiResponse<T>` wrapper:
+Semua response API menggunakan wrapper `ApiResponse<T>`:
 
 ```typescript
-// JSON response structure
+// JSON responsee structure
 {
   "success": true,
   "message": "Operation description",
-  "data": { /* response payload */ }
+  "data": { /* responsee payload */ }
 }
 ```
 
-The wrapper supports three factories:
-- `ApiResponse.success(message, data)` — successful operation
-- `ApiResponse.success(message)` — successful no-content response
-- `ApiResponse.error(message)` — error response
+Wrapper ini mendukung tiga factory:
+- `ApiResponse.success(message, data)` — operasi berhasil
+- `ApiResponse.success(message)` — response berhasil tanpa konten
+- `ApiResponse.error(message)` — response error
 
-## Links to Sub-Pages
+## Tautan ke Sub-Halaman
 
 <Cards>
   <Card title="Authentication" href="/docs/backend-java/auth">
-    JWT-based authentication with local login, registration, and Google OAuth SSO
+    Autentikasi berbasis JWT dengan login lokal, registrasi, dan Google OAuth SSO
   </Card>
   <Card title="User Management" href="/docs/backend-java/user-management">
-    Profile management, batch lookup, password changes, and soft account deletion
+    Manajemen profil, batch lookup, perubahan password, dan soft delete akun
   </Card>
   <Card title="Outbox Pattern" href="/docs/backend-java/outbox">
-    Fault-tolerant synchronization to Rust engine via scheduled retry
+    Sinkronisasi fault-tolerant ke engine Rust melalui retry terjadwal
   </Card>
 </Cards>
 
 ## Deployment
 
 - **Production/Staging**: Heroku
-- **Development**: Local Docker Compose
-- **Container Base**: Multi-stage Docker using `eclipse-temurin:21-jre`
+- **Development**: Docker Compose lokal
+- **Container Base**: Multi-stage Docker menggunakan `eclipse-temurin:21-jre`
 - **Port**: 8080
 
 <Callout type="info">
-The Java backend is the primary entry point for all frontend requests. Frontend should NEVER call Rust backend directly (8081) — use the Java BFF pattern instead.
+Backend Java adalah entry point utama untuk semua request frontend. Frontend TIDAK BOLEH memanggil backend Rust secara langsung (8081) — gunakan pattern BFF Java sebagai gantinya.
 </Callout>

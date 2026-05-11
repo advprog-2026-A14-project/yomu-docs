@@ -1,365 +1,365 @@
 ---
-title: Technology Choices
-description: Why we chose Java, Rust, Next.js, PostgreSQL, Redis, and other technologies
+title: Pilihan Teknologi
+description: Mengapa kami memilih Java, Rust, Next.js, PostgreSQL, Redis, dan teknologi lainnya
 ---
 
 
-## Why Java + Spring Boot for Auth/Content
+## Mengapa Java + Spring Boot untuk Auth/Konten
 
-### Why We Chose It
+### Mengapa Kami Memilihnya
 
-Java 21 with Spring Boot 4.0.2 is the backbone of Yomu's backend. We selected it for:
+Java 21 dengan Spring Boot 4.0.2 adalah tulang punggung backend Yomu. Kami memilihnya karena:
 
-- **Mature ecosystem** — Spring Security, Spring Data JPA/Hibernate, extensive integration patterns
-- **Enterprise-grade reliability** — Battle-tested in production at scale
-- **Massive hiring pool** — Java developers are abundant globally
-- **Strong tooling** — IntelliJ IDEA, Gradle, and excellent debugging support
+- **Ekosistem matang** — Spring Security, Spring Data JPA/Hibernate, pattern integrasi yang luas
+- **Keandalan tingkat enterprise** — Teruji dalam produksi pada skala besar
+- **Pool perekrutan besar** — Pengembang Java melimpah secara global
+- **Tooling kuat** — IntelliJ IDEA, Gradle, dan dukungan debugging yang sangat baik
 
-### Pros
+### Kelebihan
 
-- Robust Spring Security ecosystem for authentication and authorization
-- JPA/Hibernate abstracts complex SQL while maintaining tuneability
-- Gradle Kotlin DSL provides readable build configuration
-- Excellent IDE support with minimal configuration
-- Large community, extensive documentation, Stack Overflow answers for most problems
+- Ekosistem Spring Security yang kokoh untuk autentikasi dan otorisasi
+- JPA/Hibernate mengabstraksi SQL kompleks sambil mempertahankan kemampuan tuning
+- Gradle Kotlin DSL menyediakan konfigurasi build yang mudah dibaca
+- Dukungan IDE yang sangat baik dengan konfigurasi minimal
+- Komunitas besar, dokumentasi luas, jawaban Stack Overflow untuk sebagian besar masalah
 
-### Cons
+### Kekurangan
 
-- Slower cold start times compared to newer JVM languages
-- Higher memory footprint (though mitigated by modern JVM GC tuning)
-- Verbose syntax compared to Kotlin or Scala
-- Annual Spring Boot release cadence requires upgrade planning
+- Waktu cold start lebih lambat dibandingkan bahasa JVM yang lebih baru
+- Jejak memori lebih tinggi (meskipun dapat dimitigasi dengan tuning GC JVM modern)
+- Sintaks verbose dibandingkan Kotlin atau Scala
+- Siklus rilis Spring Boot tahunan memerlukan perencanaan upgrade
 
-### Alternatives Considered
+### Alternatif Dipertimbangkan
 
-| Alternative | Decision |
+| Alternatif | Keputusan |
 |-------------|----------|
-| Kotlin | Chose Java for broader team familiarity and hiring pool |
-| Go | Elegant language but lacked Spring ecosystem maturity for our complex auth flows |
-| Node.js | GC pauses during high-concurrency auth operations were unacceptable |
-| Python | Hiring and performance concerns for production authentication |
+| Kotlin | Memilih Java untuk keakraban tim dan pool perekrutan yang lebih luas |
+| Go | Bahasa elegan tetapi kurang kematangan ekosistem Spring untuk alur auth kompleks kami |
+| Node.js | GC pause selama operasi auth konkurensi tinggi tidak dapat diterima |
+| Python | Kekhawatiran perekrutan dan performa untuk autentikasi produksi |
 
-### When We'd Switch
+### Kapan Kami Akan Beralih
 
-We would consider moving away from Java if:
+Kami akan mempertimbangkan beralih dari Java jika:
 
-- Startup time becomes critical (e.g., serverless deployments with cold starts < 100ms)
-- We need to reduce memory footprint significantly
-- Team skill shift favors Kotlin (then we'd migrate gradually)
+- Waktu startup menjadi kritis (misalnya, deployment serverless dengan cold start < 100ms)
+- Kami perlu mengurangi jejak memori secara signifikan
+- Pergeseran skill tim lebih condong ke Kotlin (maka kami akan bermigrasi secara bertahap)
 
 ---
 
-## Why Rust + Axum for Gamification
+## Mengapa Rust + Axum untuk Gamifikasi
 
-### Why We Chose It
+### Mengapa Kami Memilihnya
 
-Rust 1.85+ (Edition 2024) with Axum 0.8.8 powers our gamification engine. We chose it for:
+Rust 1.85+ (Edition 2024) dengan Axum 0.8.8 menggerakkan mesin gamifikasi kami. Kami memilihnya karena:
 
-- **Zero-cost abstractions** — Runtime performance equals C++, without GC pauses
-- **Memory safety without garbage collection** — Perfect for game loops that can't afford GC-induced lag
-- **Excellent async performance** — Tokio runtime handles thousands of concurrentconnections
-- **Strong type system** — Compile-time guarantees prevent entire classes of bugs
+- **Abstraksi zero-cost** — Performa runtime setara C++, tanpa GC pause
+- **Keamanan memori tanpa garbage collection** — Sempurna untuk game loop yang tidak mampu menanggung lag akibat GC
+- **Performa async yang sangat baik** — Tokio runtime menangani ribuan koneksi konkuren
+- **Sistem tipe kuat** — Jaminan compile-time mencegah seluruh kelas bug
 
-### Pros
+### Kelebihan
 
-- Blazing-fast performance (single-digit millisecond response times for leaderboard queries)
-- No GC pauses — critical for real-time score updates
-- Memory safety without runtime overhead
-- Powerful type system catches bugs at compile time
-- Excellent concurrency primitives (futures, async/await)
+- Performa sangat cepat (waktu response milidetik satu digit untuk query leaderboard)
+- Tanpa GC pause — kritis untuk pembaruan skor real-time
+- Keamanan memori tanpa overhead runtime
+- Sistem tipe kuat menangkap bug pada waktu kompilasi
+- Primitif konkurensi yang sangat baik (futures, async/await)
 
-### Cons
+### Kekurangan
 
-- Steeper learning curve, especially for developers new to systems programming
-- Longer compile times (though mitigated by cargo build caching and watch mode)
-- Smaller ecosystem than Java or JavaScript
-- No runtime reflection or dynamic dispatch (mitigated by traits and dynamic dispatch via `dyn`)
+- Kurva pembelajaran lebih curam, terutama bagi pengembang baru dalam systems programming
+- Waktu kompilasi lebih lama (meskipun dapat dimitigasi dengan caching cargo build dan watch mode)
+- Ekosistem lebih kecil daripada Java atau JavaScript
+- Tidak ada runtime reflection atau dynamic dispatch (dimitigasi oleh traits dan dynamic dispatch via `dyn`)
 
-### Alternatives Considered
+### Alternatif Dipertimbangkan
 
-| Alternative | Decision |
+| Alternatif | Keputusan |
 |-------------|----------|
-| Go | Faster development but less performant for our high-frequency score operations |
-| C++ | Unsafe memory management - unacceptable for production game data |
-| Node.js | GC pauses during leaderboard recalculations would cause user-visible stutter |
-| Scala | JVM overhead and complexity not worth it for this high-performance workload |
+| Go | Pengembangan lebih cepat tetapi kurang performan untuk operasi skor frekuensi tinggi kami |
+| C++ | Manajemen memori tidak aman - tidak dapat diterima untuk data game produksi |
+| Node.js | GC pause selama kalkulasi ulang leaderboard akan menyebabkan stutter yang terlihat pengguna |
+| Scala | Overhead JVM dan kompleksitas tidak sepadan untuk beban kerja performa tinggi ini |
 
-### When We'd Switch
+### Kapan Kami Akan Beralih
 
-We would consider alternatives if:
+Kami akan mempertimbangkan alternatif jika:
 
-- Hiring Rust developers becomes prohibitively difficult
-- Tooling ecosystem significantly lags behind Java/Go for our use case
+- Merekrut pengembang Rust menjadi sangat sulit
+- Ekosistem tooling secara signifikan tertinggal dari Java/Go untuk use case kami
 
 ---
 
-## Why Axum Specifically (Not Actix-web)
+## Mengapa Axum Secara Spesifik (Bukan Actix-web)
 
-### Why We Chose Axum
+### Mengapa Kami Memilih Axum
 
-Axum 0.8.8 is our Rust web framework of choice. We selected it over Actix-web because:
+Axum 0.8.8 adalah framework web Rust pilihan kami. Kami memilihnya daripada Actix-web karena:
 
-- **Tower middleware ecosystem** — Reuse existing Tower middleware (e.g., CORS, compression)
-- **Ergonomic extractors** — Type-safe request parsing with zero runtime overhead
-- **Active Tokio team maintenance** — Backed by the team behind async Rust
+- **Ekosistem middleware Tower** — Menggunakan kembali middleware Tower yang ada (misalnya, CORS, kompresi)
+- **Extractor ergonomis** — Parsing request type-safe dengan nol overhead runtime
+- **Pemeliharaan aktif tim Tokio** — Didukung oleh tim di balik async Rust
 
-### Pros
+### Kelebihan
 
-- Built on proven Tower abstractions (middleware, service, hyper)
-- Extractors are type-safe and composable (e.g., `Json<T>`, `State<AppState>`, `Query<T>`)
-- Small, focused crate — easy to understand and extend
-- First-class async support (noblocking, zero-copy parsing)
+- Dibangun di atas abstraksi Tower yang terbukti (middleware, service, hyper)
+- Extractor type-safe dan dapat dikomposisi (misalnya, `Json<T>`, `State<AppState>`, `Query<T>`)
+- Crate kecil dan fokus — mudah dipahami dan diperluas
+- Dukungan async kelas satu (non-blocking, parsing zero-copy)
 
-### Cons
+### Kekurangan
 
-- Newer than Actix-web (fewer third-party examples in the wild)
-- Smaller community compared to Actix (but growing rapidly)
+- Lebih baru dari Actix-web (lebih sedikit contoh pihak ketiga di lapangan)
+- Komunitas lebih kecil dibandingkan Actix (tetapi berkembang pesat)
 
-### Alternatives Considered
+### Alternatif Dipertimbangkan
 
-| Alternative | Decision |
+| Alternatif | Keputusan |
 |-------------|----------|
-| Actix-web | More mature but steeper learning curve, different middleware model (less composable) |
-| Poem | Feature-rich but smaller community, less documentation |
-| Warp | Powerful but complex type system, harder to onboard devs |
+| Actix-web | Lebih matang tetapi kurva pembelajaran lebih curam, model middleware berbeda (kurang komposabel) |
+| Poem | Kaya fitur tetapi komunitas lebih kecil, dokumentasi lebih sedikit |
+| Warp | Kuat tetapi sistem tipe kompleks, lebih sulit untuk onboarding developer |
 
-### Decision Rationale
+### Alasan Keputusan
 
-Axum's Tower integration gave us:
+Integrasi Tower Axum memberikan kami:
 
-- Reusable middleware from the ecosystem (e.g., `tower-http` for CORS, compression, tracing)
-- Extractor composition that matched our Rust style (strong typing, compile-time safety)
-- Alignment with the Tokio team's vision for async Rust
+- Middleware yang dapat digunakan kembali dari ekosistem (misalnya, `tower-http` untuk CORS, kompresi, tracing)
+- Komposisi extractor yang cocok dengan gaya Rust kami (strong typing, keamanan compile-time)
+- Keselarasan dengan visi tim Tokio untuk async Rust
 
-We prioritized ergonomic correctness over maturity for this greenfield project.
+Kami memprioritaskan kebenaran ergonomis daripada kematangan untuk proyek greenfield ini.
 
 ---
 
-## Why SQLx (Not Diesel/SeaORM)
+## Mengapa SQLx (Bukan Diesel/SeaORM)
 
-### Why We Chose SQLx
+### Mengapa Kami Memilih SQLx
 
-SQLx is our async Rust ORM/query builder. We selected it for:
+SQLx adalah ORM/query builder async Rust kami. Kami memilihnya karena:
 
-- **Compile-time query checking** — SQL syntax checked at compile time with `sqlx check`
-- **Async-native** — Built from the ground up for async/await
-- **No ORM overhead** — Direct SQL power without abstraction leaks
-- **Offline mode** — Pre-generate SQL queries for offline development
+- **Pemeriksaan query compile-time** — Sintaks SQL diperiksa pada waktu kompilasi dengan `sqlx check`
+- **Async-native** — Dibangun dari awal untuk async/await
+- **Tanpa overhead ORM** — Kekuatan SQL langsung tanpa kebocoran abstraksi
+- **Mode offline** — Pra-generate query SQL untuk pengembangan offline
 
-### Pros
+### Kelebihan
 
-- Compile-time SQL validation (`sqlx check` runs before compilation)
-- No runtime ORM overhead — direct mapping to Rust structs
-- Type-safe queries with parameter binding
-- Multi-database support (PostgreSQL, MySQL, SQLite)
-- `sqlx migrate` for versioned migrations
-- Offline mode (pre-generate query plans)
+- Validasi SQL compile-time (`sqlx check` berjalan sebelum kompilasi)
+- Tanpa overhead ORM runtime — mapping langsung ke struct Rust
+- Query type-safe dengan binding parameter
+- Dukungan multi-database (PostgreSQL, MySQL, SQLite)
+- `sqlx migrate` untuk migrasi berversi
+- Mode offline (pra-generate query plan)
 
-### Cons
+### Kekurangan
 
-- Manual SQL required (no automatic migrations)
-- Less abstraction than full ORMs (Diesel, SeaORM)
-- Learning curve for SQLx's query macros
+- SQL manual diperlukan (tidak ada migrasi otomatis)
+- Abstraksi lebih sedikit daripada ORM penuh (Diesel, SeaORM)
+- Kurva pembelajaran untuk macro query SQLx
 
-### Alternatives Considered
+### Alternatif Dipertimbangkan
 
-| Alternative | Decision |
+| Alternatif | Keputusan |
 |-------------|----------|
-| Diesel | Sync API — too slow for gamification (no async support) |
-| SeaORM | Async ORM but younger community, slight abstraction leaks |
-| Tokio-postgres | Too low-level — we wanted query validation + convenience macros |
+| Diesel | API sync — terlalu lambat untuk gamifikasi (tidak ada dukungan async) |
+| SeaORM | ORM async tetapi komunitas lebih muda, sedikit kebocoran abstraksi |
+| Tokio-postgres | Terlalu low-level — kami menginginkan validasi query + macro kenyamanan |
 
-### Decision Rationale
+### Alasan Keputusan
 
-SQLx strikes the perfect balance:
+SQLx mencapai keseimbangan sempurna:
 
-- Compile-time safety (unlike raw `tokio-postgres`)
-- Full SQL control (unlikeSeaORM's abstraction)
-- Async-first design (unlike Diesel)
+- Keamanan compile-time (tidak seperti `tokio-postgres` mentah)
+- Kontrol SQL penuh (tidak seperti abstraksi SeaORM)
+- Desain async-first (tidak seperti Diesel)
 
-For our performance-critical gamification module, we needed both speed and safety — SQLx delivers both.
+Untuk modul gamifikasi kami yang kritis performa, kami membutuhkan kecepatan dan keamanan — SQLx memberikan keduanya.
 
 ---
 
-## Why Next.js (Not Pure React/Vite)
+## Mengapa Next.js (Bukan Pure React/Vite)
 
-### Why We Chose Next.js
+### Mengapa Kami Memilih Next.js
 
-Next.js 16.1.6 is Yomu's frontend framework. We selected it for:
+Next.js 16.1.6 adalah framework frontend Yomu. Kami memilihnya karena:
 
-- **BFF pattern built-in** — API routes on same domain, shared cookies
-- **SSR/SSG support** — Dynamic content and static generation
-- **File-based routing** — No router boilerplate
-- **Standalone output** — Optimized production builds for Docker
-- **Massive ecosystem** — Shadcn/ui, React Hook Form, Zod, Tailwind CSS
+- **pattern BFF bawaan** — Rute API di domain yang sama, cookie bersama
+- **Dukungan SSR/SSG** — Konten dinamis dan generasi statis
+- **Routing berbasis file** — Tanpa boilerplate router
+- **Output standalone** — Build produksi yang dioptimalkan untuk Docker
+- **Ekosistem masif** — Shadcn/ui, React Hook Form, Zod, Tailwind CSS
 
-### Pros
+### Kelebihan
 
-- API routes provide Backend-for-Frontend pattern natively
-- SSR for SEO and initial render performance
-- SSG for static content (help docs, pricing)
-- File-based routing with dynamic segments
-- Incremental Static Regeneration (ISR) for near-real-time content
-- Next.js App Router with Server Components
-- Standalone output mode for reproducible Docker builds
+- Rute API menyediakan pattern Backend-for-Frontend secara native
+- SSR untuk SEO dan performa render awal
+- SSG untuk konten statis (dokumen bantuan, pricing)
+- Routing berbasis file dengan segmen dinamis
+- Incremental Static Regeneration (ISR) untuk konten near-real-time
+- Next.js App Router dengan Server Components
+- Mode output standalone untuk build Docker yang reproducible
 
-### Cons
+### Kekurangan
 
-- Complex caching model (can be confusing for beginners)
-- Server/client boundary can blur (requires intentional architecture)
-- Heavier than pure Vite SPA (though mitigated by code splitting)
+- Model caching yang kompleks (dapat membingungkan bagi pemula)
+- Batas server/client dapat kabur (memerlukan Architecture yang disengaja)
+- Lebih berat daripada Vite SPA murni (meskipun dimitigasi oleh code splitting)
 
-### Alternatives Considered
+### Alternatif Dipertimbangkan
 
-| Alternative | Decision |
+| Alternatif | Keputusan |
 |-------------|----------|
-| Remix | Newer, less ecosystem, smaller community |
-| Vite SPA | No built-in BFF, need separate backend |
-| Astro | Content-focused, less interactive application support |
+| Remix | Lebih baru, ekosistem lebih sedikit, komunitas lebih kecil |
+| Vite SPA | Tanpa BFF bawaan, perlu backend terpisah |
+| Astro | Fokus konten, dukungan aplikasi interaktif lebih sedikit |
 
-### Decision Rationale
+### Alasan Keputusan
 
-Next.js provides:
+Next.js menyediakan:
 
-- **BFF pattern without setup** — API routes are just files in `src/app/api/`
-- **Shared authentication** — Same cookies for frontend and API routes
-- **RSC/Server Components** — Better performance, less JavaScript on client
-- **Production readiness** — Standalone output, optimized images, fonts
+- **pattern BFF tanpa setup** — Rute API hanyalah file di `src/app/api/`
+- **Autentikasi bersama** — Cookie yang sama untuk frontend dan rute API
+- **RSC/Server Components** — Performa lebih baik, lebih sedikit JavaScript di client
+- **Kesiapan produksi** — Output standalone, gambar yang dioptimalkan, font
 
-We chose Next.js because it solved our "glue layer" problem natively.
-
----
-
-## Why PostgreSQL (Not MySQL/MongoDB)
-
-### Why We Chose PostgreSQL
-
-PostgreSQL 16+ (Java) and 17+ (Rust) is our primary database. We selected it because:
-
-- **ACID compliance** — Strong consistency guarantees
-- **JSON support** — Native `JSONB` type for flexible schemas
-- **Strong SQL standards** — Rich query language, CTEs, window functions
-- **Excellent tooling** — pgAdmin, psql, pg_dump, logical replication
-
-### Pros
-
-- Strong ACID compliance
-- JSONB for hybrid relational/document storage
-- Excellent concurrent write support
-- Rich SQL features (CTEs, window functions, full-text search)
-- Battle-tested in production
-
-### Cons
-
-- Slightly more complex than MySQL for basic setups
-- Resource heavier than SQLite (irrelevant for production)
-
-### Decision Rationale
-
-PostgreSQL is our default relational database choice. The JSONB support was particularly valuable for the outbox pattern and gamification metadata storage.
-
-We evaluated MongoDB but rejected it for:
-
-- Need for ACID compliance
-- Existing PostgreSQL infrastructure
+Kami memilih Next.js karena menyelesaikan masalah "lapisan perekat" kami secara native.
 
 ---
 
-## Why Redis for Leaderboards
+## Mengapa PostgreSQL (Bukan MySQL/MongoDB)
 
-### Why We Chose Redis
+### Mengapa Kami Memilih PostgreSQL
 
-Redis 8+ is our caching and leaderboard storage. We selected it for:
+PostgreSQL 16+ (Java) dan 17+ (Rust) adalah database utama kami. Kami memilihnya karena:
 
-- **Sorted sets natively support leaderboards** — `ZADD`, `ZRANK`, `ZREVRANK`
-- **Sub-millisecond latency** — In-memory performance essential for real-time games
-- **Atomic operations** — `MULTI`/`EXEC` for consistent updates
+- **Kepatuhan ACID** — Jaminan konsistensi yang kuat
+- **Dukungan JSON** — Tipe `JSONB` native untuk skema fleksibel
+- **Standar SQL yang kuat** — Bahasa query kaya, CTE, fungsi window
+- **Tooling yang sangat baik** — pgAdmin, psql, pg_dump, replikasi logis
 
-### Pros
+### Kelebihan
 
-- Native sorted sets — perfect for leaderboard use cases
-- Sub-millisecond query latency
-- Atomic operations (no race conditions)
-- Pub/Sub for real-time score updates
-- Replication and persistence options
+- Kepatuhan ACID yang kuat
+- JSONB untuk storage hybrid relasional/dokumen
+- Dukungan write konkuren yang sangat baik
+- Fitur SQL kaya (CTE, fungsi window, full-text search)
+- Teruji dalam produksi
 
-### Cons
+### Kekurangan
 
-- Memory cost (data must fit in RAM)
-- Data loss risk without persistence configuration
-- Operational overhead (monitoring, tuning)
+- Sedikit lebih kompleks daripada MySQL untuk setup dasar
+- Lebih berat sumber daya daripada SQLite (tidak relevan untuk produksi)
 
-### Alternatives Considered
+### Alasan Keputusan
 
-| Alternative | Decision |
+PostgreSQL adalah pilihan database relasional default kami. Dukungan JSONB sangat berharga untuk pattern outbox dan storage metadata gamifikasi.
+
+Kami mengevaluasi MongoDB tetapi menolaknya karena:
+
+- Kebutuhan kepatuhan ACID
+- Infrastruktur PostgreSQL yang sudah ada
+
+---
+
+## Mengapa Redis untuk Leaderboard
+
+### Mengapa Kami Memilih Redis
+
+Redis 8+ adalah cache dan leaderboard storage kami. Kami memilihnya karena:
+
+- **Sorted set secara native mendukung leaderboard** — `ZADD`, `ZRANK`, `ZREVRANK`
+- **Latensi sub-milidetik** — Performa in-memory esensial untuk game real-time
+- **Operasi atomik** — `MULTI`/`EXEC` untuk pembaruan yang konsisten
+
+### Kelebihan
+
+- Sorted set native — sempurna untuk use case leaderboard
+- Latensi query sub-milidetik
+- Operasi atomik (tanpa race condition)
+- Pub/Sub untuk pembaruan skor real-time
+- Opsi replikasi dan persistence
+
+### Kekurangan
+
+- Biaya memori (data harus muat di RAM)
+- Risiko kehilangan data tanpa konfigurasi persistence
+- Overhead operasional (monitoring, tuning)
+
+### Alternatif Dipertimbangkan
+
+| Alternatif | Keputusan |
 |-------------|----------|
-| PostgreSQL window functions | Slower at scale, no real-time |
-| In-memory in Rust | Single-node, no replication |
-| Memcached | No sorted sets, limited features |
+| PostgreSQL window functions | Lebih lambat pada skala besar, tidak real-time |
+| In-memory di Rust | Single-node, tanpa replikasi |
+| Memcached | Tanpa sorted set, fitur terbatas |
 
-### Decision Rationale
+### Alasan Keputusan
 
-Redis is THE standard for leaderboards. Its sorted sets provide:
+Redis ADALAH standar untuk leaderboard. Sorted set-nya menyediakan:
 
-- **ZADD** — Add scores atomically
-- **ZREVRANK** — Get player rank in descending order
-- **ZREMRANGEBYRANK** — Trim leaderboards efficiently
+- **ZADD** — Tambahkan skor secara atomik
+- **ZREVRANK** — Dapatkan peringkat pemain dalam urutan menurun
+- **ZREMRANGEBYRANK** — Pangkas leaderboard secara efisien
 
-No other solution matched Redis's combination of speed and_features for this specific use case.
-
----
-
-## Why Tailwind CSS v4 (Not CSS Modules/styled-components)
-
-### Why We Chose Tailwind CSS v4
-
-Tailwind CSS v4 is our styling framework. We selected it because:
-
-- **Utility-first approach** — Component-local styles, no naming collisions
-- **Zero-runtime** — No JavaScript overhead at runtime
-- **Consistent design tokens** — Unified design system
-- **shadcn/ui integration** — Required for our UI component library
-
-### Pros
-
-- Component-local styling (no global CSS cascade)
-- No class name collisions
-- Rapid development with utility classes
-- Zero-runtime (styles are pre-generated)
-- Consistent spacing, colors, typography via design tokens
-- shadcn/ui requires Tailwind (deep integration)
-
-### Cons
-
-- Verbose `className` attributes
-- Learning curve for utility-first mindset
-- Some developers prefer CSS-in-JS ergonomics
-
-### Decision Rationale
-
-We chose Tailwind because:
-
-- shadcn/ui (our UI library) requires Tailwind
-- Utility-first approach prevents CSS bloat
-- v4's `@layer base` and `@layer components` improve maintainability
+Tidak ada solusi lain yang setara dengan kombinasi kecepatan dan fitur Redis untuk use case spesifik ini.
 
 ---
 
-## Summary
+## Mengapa Tailwind CSS v4 (Bukan CSS Modules/styled-components)
 
-| Layer | Technology | Why |
+### Mengapa Kami Memilih Tailwind CSS v4
+
+Tailwind CSS v4 adalah framework styling kami. Kami memilihnya karena:
+
+- **Pendekatan utility-first** — Style lokal komponen, tanpa tabrakan penamaan
+- **Zero-runtime** — Tanpa overhead JavaScript pada runtime
+- **Design token konsisten** — Sistem desain terpadu
+- **Integrasi shadcn/ui** — Diperlukan untuk pustaka komponen UI kami
+
+### Kelebihan
+
+- Styling lokal komponen (tanpa CSS cascade global)
+- Tanpa tabrakan nama class
+- Pengembangan cepat dengan utility class
+- Zero-runtime (style di-pre-generate)
+- Spasi, warna, tipografi yang konsisten via design token
+- shadcn/ui memerlukan Tailwind (integrasi mendalam)
+
+### Kekurangan
+
+- Atribut `className` yang verbose
+- Kurva pembelajaran untuk mindset utility-first
+- Beberapa pengembang lebih menyukai ergonomi CSS-in-JS
+
+### Alasan Keputusan
+
+Kami memilih Tailwind karena:
+
+- shadcn/ui (pustaka UI kami) memerlukan Tailwind
+- Pendekatan utility-first mencegah CSS bloat
+- `@layer base` dan `@layer components` v4 meningkatkan maintainabilitas
+
+---
+
+## Ringkasan
+
+| Lapisan | Teknologi | Mengapa |
 |-------|-----------|-----|
-| Backend Auth | Java 21 + Spring Boot 4.0.2 | Mature ecosystem, security, ease of hiring |
-| Backend Gamification | Rust 1.85+ (Edition 2024) + Axum 0.8.8 | Performance, memory safety, async |
-| Database | PostgreSQL 16/17 | ACID, JSON support, tooling |
-| Cache/Leaderboard | Redis 8 | Sorted sets, sub-ms latency |
-| Frontend | Next.js 16.1.6 | BFF, SSR, file-based routing |
+| Backend Auth | Java 21 + Spring Boot 4.0.2 | Ekosistem matang, keamanan, kemudahan perekrutan |
+| Backend Gamifikasi | Rust 1.85+ (Edition 2024) + Axum 0.8.8 | Performa, keamanan memori, async |
+| Database | PostgreSQL 16/17 | ACID, dukungan JSON, tooling |
+| Cache/Leaderboard | Redis 8 | Sorted set, latensi sub-ms |
+| Frontend | Next.js 16.1.6 | BFF, SSR, routing berbasis file |
 | Styling | Tailwind CSS v4 | Utility-first, shadcn/ui, zero-runtime |
 
-Each technology choice reflects our commitment to:
+Setiap pilihan teknologi mencerminkan komitmen kami terhadap:
 
-- **Performance** — Rust for gamification, Redis for leaderboards
-- **Reliability** — Java for auth, PostgreSQL for data
-- **Developer velocity** — Next.js for frontend, Tailwind for rapid UI development
+- **Performa** — Rust untuk gamifikasi, Redis untuk leaderboard
+- **Keandalan** — Java untuk auth, PostgreSQL untuk data
+- **Kecepatan pengembang** — Next.js untuk frontend, Tailwind untuk pengembangan UI cepat
 
-The polyglot approach lets us optimize each service for its specific workload.
+Pendekatan polyglot memungkinkan kami mengoptimalkan setiap layanan untuk beban kerja spesifiknya.

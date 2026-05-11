@@ -1,14 +1,14 @@
 ---
-title: Development Guide
-description: Setting up local development, Docker, testing, and common workflows
+title: Panduan Pengembangan
+description: Menyiapkan pengembangan lokal, Docker, testing, dan workflow umum
 ---
 
 
-## Overview
+## Gambaran Umum
 
-This guide covers setting up your local development environment for Yomu. The platform consists of three services:
+Panduan ini mencakup cara menyiapkan environment pengembangan lokal untuk Yomu. Platform terdiri dari tiga service:
 
-| Service | Port | Description |
+| Service | Port | Deskripsi |
 |---------|------|-------------|
 | Frontend | 3000 | Next.js 16 |
 | Java Backend | 8080 | Spring Boot 4 |
@@ -24,11 +24,11 @@ graph LR
     D -->|Cache| F[(Redis)]
 ```
 
-## Sub-Projects Structure
+## Struktur Sub-Proyek
 
 ### yomu-backend-java
 
-Java 21 with Spring Boot 4.0.2, Gradle Kotlin DSL.
+Java 21 dengan Spring Boot 4.0.2, Gradle Kotlin DSL.
 
 ```bash
 cd yomu-backend-java
@@ -42,7 +42,7 @@ Rust 1.85+ (Edition 2024), Axum 0.8.8, SQLx.
 ```bash
 cd yomu-backend-rust
 cargo run
-# or with hot reload:
+# atau dengan hot reload:
 docker compose -f docker-compose.dev.yml up
 ```
 
@@ -55,83 +55,83 @@ cd yomu-frontend
 bun run dev
 ```
 
-## Prerequisites
+## Prasyarat
 
-| Tool | Version | Notes |
+| Tool | Versi | Catatan |
 |------|---------|-------|
-| Java | 21 | `java -version` must show 21 |
+| Java | 21 | `java -version` harus menampilkan 21 |
 | Rust | 1.85+ | `rustc --version` |
 | Node.js | 22+ | `node -v` |
-| Docker | Latest | Desktop or Engine |
-| bun | Latest | `bun -v` |
+| Docker | Terbaru | Desktop atau Engine |
+| bun | Terbaru | `bun -v` |
 
-## Quick Start
+## Mulai Cepat
 
-### Step 1: Start Infrastructure
+### Langkah 1: Mulai Infrastructure
 
-All projects include Docker Compose for PostgreSQL and Redis.
+Semua proyek menyertakan Docker Compose untuk PostgreSQL dan Redis.
 
 ```bash
-# Start both services (PostgreSQL 16/17, Redis 8)
+# Mulai kedua services (PostgreSQL 16/17, Redis 8)
 cd yomu-backend-rust && docker compose -f docker-compose.dev.yml build && docker compose -f docker-compose.dev.yml up -d
 ```
 
-Verify:
+Verifikasi:
 
 ```bash
 docker compose -f yomu-backend-rust/docker-compose.dev.yml ps
 ```
 
-### Step 2: Run Migrations
+### Langkah 2: Jalankan Migrations
 
 ```bash
-# Java: auto-migrates on startup
-# Rust: manual migration
+# Java: auto-migrate saat startup
+# Rust: migration manual
 cd yomu-backend-rust
 cargo sqlx migrate run
 ```
 
-### Step 3: Start Java Backend
+### Langkah 3: Mulai Java Backend
 
 ```bash
 cd yomu-backend-java
 ./gradlew bootRun
 ```
 
-Verify: `curl http://localhost:8080/health`
+Verifikasi: `curl http://localhost:8080/health`
 
-### Step 4: Start Rust Backend
+### Langkah 4: Mulai Rust Backend
 
 ```bash
 cd yomu-backend-rust
 cargo run
 ```
 
-Verify: `curl http://localhost:8081/health`
+Verifikasi: `curl http://localhost:8081/health`
 
-### Step 5: Start Frontend
+### Langkah 5: Mulai Frontend
 
 ```bash
 cd yomu-frontend
 bun run dev
 ```
 
-Verify: open `http://localhost:3000`
+Verifikasi: buka `http://localhost:3000`
 
 ---
 
-## Common Tasks
+## Tugas Umum
 
-| Task | Command |
+| Tugas | Command |
 |------|---------|
-| Run Java tests | `cd yomu-backend-java && ./gradlew test` |
-| Run Rust tests | `cd yomu-backend-rust && cargo test` |
+| Jalankan Java tests | `cd yomu-backend-java && ./gradlew test` |
+| Jalankan Rust tests | `cd yomu-backend-rust && cargo test` |
 | Build frontend | `cd yomu-frontend && bun run build` |
 | Format Rust code | `cd yomu-backend-rust && cargo fmt` |
 | Lint Rust code | `cd yomu-backend-rust && cargo clippy` |
 
 ---
 
-## Sub-Pages
+## Sub-Halaman
 
-- [Setup Guide](/docs/development/setup) — Detailed setup with environment variables, Docker Compose, and troubleshooting
+- [Panduan Setup](/docs/development/setup) — Setup detail dengan environment variables, Docker Compose, dan troubleshooting

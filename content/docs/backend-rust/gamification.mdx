@@ -1,45 +1,45 @@
 ---
-title: Gamification Module
-description: Achievement tracking, daily missions, and reward points system
+title: Modul Gamification
+description: Pelacakan pencapaian, misi harian, dan sistem poin hadiah
 ---
 
 <Callout type="info">
-The Gamification module handles achievement milestones, daily missions, and reward distribution. It processes quiz completions and updates user progress in near real-time.
+Modul Gamification menangani tonggak pencapaian (achievement milestones), misi harian, dan distribusi hadiah. Ia memproses penyelesaian kuis dan memperbarui progres pengguna secara near real-time.
 </Callout>
 
-## Bounded Context
+## Konteks Terbatas
 
-The module owns:
+Modul ini memiliki:
 
-- Achievement definitions and progression tracking
-- Daily mission setup and completion
-- Reward point accumulation and claiming
-- Achievement unlocks on milestone completion
+- Definisi pencapaian dan pelacakan progresi
+- Pengaturan dan penyelesaian misi harian
+- Akumulasi dan klaim poin hadiah
+- Pembukaan pencapaian pada penyelesaian tonggak
 
-## Entities
+## Entitas
 
 ```rust
-// Achievement: defines a reward for completing a task
+// Achievement: mendefinisikan hadiah untuk menyelesaikan tugas
 pub struct Achievement {
     pub id: Uuid,
     pub title: String,
     pub description: String,
     pub type_: AchievementType,  // Common, Rare, Epic, Legendary
     pub points: i32,
-    pub order: i32,             // Display order
+    pub order: i32,             // Urutan tampilan
 }
 
-// Daily mission: resets daily, tracks progress
+// Daily mission: direset setiap hari, melacak progres
 pub struct DailyMission {
     pub id: Uuid,
     pub title: String,
     pub description: String,
-    pub target_value: i32,      // e.g., 5 quizzes completed
+    pub target_value: i32,      // misalnya, 5 kuis diselesaikan
     pub points: i32,
-    pub reward_amount: i32,     // In-game currency
+    pub reward_amount: i32,     // Mata uang dalam game
 }
 
-// User achievement: tracks progress
+// User achievement: melacak progres pengguna
 pub struct UserAchievement {
     pub user_id: Uuid,
     pub achievement_id: Uuid,
@@ -48,7 +48,7 @@ pub struct UserAchievement {
     pub claimed: bool,
 }
 
-// User mission: tracking for daily missions
+// User mission: pelacakan untuk misi harian
 pub struct UserMission {
     pub user_id: Uuid,
     pub mission_id: Uuid,
@@ -58,16 +58,16 @@ pub struct UserMission {
 }
 ```
 
-## Achievement Type
+## Tipe Pencapaian
 
-| Type | Rarity |Points Bonus |
+| Tipe | Kelangkaan | Bonus Poin |
 |------|--------|-------------|
 | Common | 60% | 10 |
 | Rare | 25% | 25 |
 | Epic | 10% | 50 |
 | Legendary | 5% | 100 |
 
-## Repository Traits
+## Trait Repositori
 
 ```rust
 #[async_trait]
@@ -102,22 +102,22 @@ pub trait MissionRepository: Send + Sync {
         &self,
         user_id: Uuid,
         mission_id: Uuid,
-    ) -> Result<i32, RepositoryError>;  // Returns points awarded
+    ) -> Result<i32, RepositoryError>;  // Mengembalikan poin yang diberikan
 }
 ```
 
-## Use Cases
+## Use Case
 
 <Cards>
 <Card title="SyncQuizGamificationUseCase">
-Processes quiz completions: checks achievements, updates missions, awards points. Idempotent per (user_id, article_id) pair.
+Memproses penyelesaian kuis: memeriksa pencapaian, memperbarui misi, memberikan poin. Idempoten per pasangan (user_id, article_id).
 </Card>
 <Card title="ClaimMissionRewardUseCase">
-Claims daily mission reward. Validates mission completion, deducts reward, updates points balance, prevents double-claiming.
+Mengklaim hadiah misi harian. Memvalidasi penyelesaian misi, mendistribusikan hadiah, memperbarui saldo poin, mencegah klaim ganda.
 </Card>
 </Cards>
 
-## Execution Flow: Quiz Completion Triggers Gamification Update
+## Alur Eksekusi: Penyelesaian Kuis Memicu Pembaruan Gamifikasi
 
 <Diagram name="QuizGamificationSequence">
 ```mermaid
@@ -140,8 +140,8 @@ sequenceDiagram
     AchievementRepository->>PostgreSQL: SELECT * FROM achievements
     PostgreSQL-->>AchievementRepository: [...]
     
-    loop Achievements Check
-        SyncQuizGamificationUseCase->>AchievementRepository: update progress
+    loop Pemeriksaan Pencapaian
+        SyncQuizGamificationUseCase->>AchievementRepository: perbarui progres
         AchievementRepository->>PostgreSQL: UPDATE user_achievements
     end
     
@@ -149,34 +149,34 @@ sequenceDiagram
     MissionRepository->>PostgreSQL: SELECT * FROM daily_missions
     PostgreSQL-->>MissionRepository: [...]
     
-    loop Missions Check
-        SyncQuizGamificationUseCase->>MissionRepository: update progress
+    loop Pemeriksaan Misi
+        SyncQuizGamificationUseCase->>MissionRepository: perbarui progres
         MissionRepository->>PostgreSQL: UPDATE user_missions
     end
     
-    Note over SyncQuizGamificationUseCase: Award points if any completed
+    Note over SyncQuizGamificationUseCase: Berikan poin jika ada yang selesai
     SyncQuizGamificationUseCase->>Redis: HINCRBY user:points 25
-    Redis-->>SyncQuizGamificationUseCase: New total
+    Redis-->>SyncQuizGamificationUseCase: Total baru
     
     SyncQuizGamificationUseCase-->>RustController: SyncResult (awarded_points: 25)
     RustController-->>JavaBackend: 200 OK
 ```
 </Diagram>
 
-## Endpoints
+## Endpoint
 
 <Steps>
 <Step title="GET /api/v1/missions/daily">
-Fetches today's active daily missions for the authenticated user.
+Mengambil misi harian yang aktif hari ini untuk pengguna yang terautentikasi.
 
-Response:
+Respons:
 ```json
 {
   "missions": [
     {
       "id": "uuid",
-      "title": "Complete 5 Quizzes",
-      "description": "Finish 5 quizzes today",
+      "title": "Selesaikan 5 Kuis",
+      "description": "Selesaikan 5 kuis hari ini",
       "target_value": 5,
       "current_value": 3,
       "completed": false,
@@ -188,14 +188,14 @@ Response:
 ```
 </Step>
 <Step title="POST /api/v1/missions/:id/claim">
-Claims reward for a completed mission.
+Mengklaim hadiah untuk misi yang telah diselesaikan.
 
-Response: `200 OK` or `400` (already claimed, not completed) / `404`
+Respons: `200 OK` atau `400` (sudah diklaim, belum selesai) / `404`
 
 ```json
 {
   "success": true,
-  "message": "Reward claimed!",
+  "message": "Hadiah diklaim!",
   "data": {
     "points_awarded": 25
   }
@@ -203,16 +203,16 @@ Response: `200 OK` or `400` (already claimed, not completed) / `404`
 ```
 </Step>
 <Step title="GET /api/v1/achievements/users/:user_id">
-Fetches user's achievements with progress.
+Mengambil pencapaian pengguna dengan progres.
 
-Response:
+Respons:
 ```json
 {
   "achievements": [
     {
       "id": "uuid",
       "title": "Quiz Whiz",
-      "description": "Complete 100 quizzes",
+      "description": "Selesaikan 100 kuis",
       "type": "Common",
       "progress": 75,
       "total": 100,
@@ -227,39 +227,39 @@ Response:
 </Step>
 </Steps>
 
-## Validation
+## Validasi
 
-| Field | Constraint |
+| Field | Batasan |
 |-------|------------|
-| `score` | Must be ≥ 0 |
-| `accuracy` | Must be between 0.0 and 100.0 |
-| `target_value` | Must be ≥ 1 |
-| `progress` | Must not exceed `target_value` |
+| `score` | Harus ≥ 0 |
+| `accuracy` | Harus antara 0.0 dan 100.0 |
+| `target_value` | Harus ≥ 1 |
+| `progress` | Tidak boleh melebihi `target_value` |
 
-## Points Calculation
+## Perhitungan Poin
 
-When `SyncQuizGamificationUseCase` runs:
+Ketika `SyncQuizGamificationUseCase` berjalan:
 
 ```rust
 // Pseudocode
-points_earned = 0;
+poin_diperoleh = 0;
 
-for achievement in achievements {
-    if is_milestone_reached(progress, achievement.target) {
-        award_points(achievement.points);
-        points_earned += achievement.points;
+for pencapaian in daftar_pencapaian {
+    if tonggak_tercapai(progres, pencapaian.target) {
+        berikan_poin(pencapaian.points);
+        poin_diperoleh += pencapaian.points;
     }
 }
 
-for mission in missions {
-    if is_completed(mission) && !mission.claimed {
-        points_earned += mission.points;
+for misi in daftar_misi {
+    if sudah_selesai(misi) && !misi.claimed {
+        poin_diperoleh += misi.points;
     }
 }
 ```
 
-## Testing Strategy
+## Strategi Pengujian
 
-- **Unit**: AchievementRepository, MissionRepository mocked with `mockall`
-- **Integration**: Full stack with test database, verify achievement unlocking
-- **Edge Cases**: Idempotency, double completion, zero/invalid scores
+- **Unit**: AchievementRepository, MissionRepository di-mock dengan `mockall`
+- **Integrasi**: Full stack dengan database uji, verifikasi pembukaan pencapaian
+- **Kasus Tepi**: Idempotensi, penyelesaian ganda, skor nol/tidak valid

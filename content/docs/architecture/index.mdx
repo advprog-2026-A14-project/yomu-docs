@@ -1,30 +1,30 @@
 ---
-title: Architecture Overview
-description: Yomu system architecture — a polyglot learning platform with Java auth backend, Rust gamification engine, and Next.js frontend
+title: Ikhtisar Architecture
+description: system architecture Yomu — platform pembelajaran poliglot dengan backend auth Java, engine gamifikasi Rust, dan frontend Next.js
 ---
 
 
-## What is Yomu?
+## Apa itu Yomu?
 
-Yomu is a polyglot learning platform designed to improve Indonesian literacy through gamified reading and quiz experiences. The platform combines robust backend services built with different technologies optimized for their specific domains, creating an efficient and scalable system.
+Yomu adalah platform pembelajaran poliglot yang dirancang untuk meningkatkan literasi bahasa Indonesia melalui pengalaman membaca dan kuis yang digamifikasi. Platform ini menggabungkan layanan backend yang tangguh yang dibangun dengan teknologi berbeda yang dioptimalkan untuk domain spesifiknya, menciptakan sistem yang efisien dan skalabel.
 
-The core philosophy behind Yomu's architecture is **using the right tool for the job** — Java for reliable user authentication and content management, Rust for high-performance gamification calculations, and Next.js for server-side rendered React experiences.
+Filosofi inti di balik Architecture Yomu adalah **menggunakan alat yang tepat untuk pekerjaan yang tepat** — Java untuk autentikasi pengguna dan manajemen konten yang andal, Rust untuk kalkulasi gamifikasi performa tinggi, dan Next.js untuk pengalaman React yang di-render di sisi server.
 
-### Platform Goals
+### Tujuan Platform
 
-Yomu was built with several key objectives in mind:
+Yomu dibangun dengan beberapa tujuan utama:
 
-- **Accessibility** — Provide learning materials in Bahasa Indonesia for students across the archipelago
-- **Engagement** — Use gamification mechanics to maintain user motivation and track progress
-- **Scalability** — Support growing user base with minimal infrastructure changes
-- **Maintainability** - Clear service boundaries enable independent development and deployment
-- **Performance** — Real-time leaderboard updates for competitive learning experiences
+- **Aksesibilitas** — Menyediakan materi pembelajaran dalam Bahasa Indonesia untuk pelajar di seluruh nusantara
+- **Keterlibatan** — Menggunakan mekanisme gamifikasi untuk menjaga motivasi pengguna dan melacak kemajuan
+- **Skalabilitas** — Mendukung basis pengguna yang terus bertambah dengan perubahan infrastruktur minimal
+- **Kemudahan Pemeliharaan** — Batasan layanan yang jelas memungkinkan pengembangan dan deployment secara independen
+- **Performa** — Pembaruan papan peringkat real-time untuk pengalaman belajar yang kompetitif
 
 <Callout type="note">
-Yomu does not use shared databases or services between its components. Each service maintains its own bounded context with clear separation of concerns, ensuring that failure in one layer does not cascade to others.
+Yomu tidak menggunakan database atau layanan bersama antar komponennya. Setiap layanan mempertahankan bounded context-nya sendiri dengan pemisahan tanggung jawab yang jelas, memastikan bahwa kegagalan di satu lapisan tidak menjalar ke lapisan lainnya.
 </Callout>
 
-## Three-Tier Architecture
+## Architecture Tiga Lapis
 
 ```mermaid
 flowchart TD
@@ -57,36 +57,36 @@ flowchart TD
     RUST -.->|User Sync Events| JAVA
 ```
 
-### Architecture Layers Explained
+### Penjelasan Lapisan Architecture
 
-#### Frontend Layer (Next.js 16)
-- **Server-Side Rendering** — Pre-rendered pages for SEO and fast initial load
-- **API Routes as BFF** — Backend for Frontend pattern consolidates backend calls
-- **Static Generation** — Article pages generated at build time for optimal performance
-- **Client Components** — Interactive UI elements using React hooks and state management
+#### Lapisan Frontend (Next.js 16)
+- **Server-Side Rendering** — Halaman yang di-pre-render untuk SEO dan initial load yang cepat
+- **API Routes sebagai BFF** — pattern Backend for Frontend mengonsolidasikan panggilan backend
+- **Static Generation** — Halaman artikel dibuat saat build time untuk performa optimal
+- **Client Components** — Elemen UI interaktif menggunakan React hooks dan manajemen state
 
-#### Core Service Layer (Java Spring Boot)
-- **User Authentication** — JWT-based authentication with Google OAuth support
-- **Content Management** — CRUD operations for articles, quizzes, and comments
-- **Database Management** — PostgreSQL for persistent storage with Flyway migrations
-- **Event Generation** — Outbox pattern for reliable message delivery to engine services
+#### Lapisan Core Service (Java Spring Boot)
+- **Autentikasi Pengguna** — Autentikasi berbasis JWT dengan dukungan Google OAuth
+- **Manajemen Konten** — Operasi CRUD untuk artikel, kuis, dan komentar
+- **Manajemen Database** — PostgreSQL untuk storage persisten dengan migrasi Flyway
+- **Pembuatan Event** — pattern Outbox untuk pengiriman pesan yang andal ke layanan engine
 
-#### Engine Service Layer (Rust Axum)
-- **Gamification Engine** — Achievement tracking, daily missions, XP calculations
-- **Clan Management** — Team formation, score aggregation, tier progression
-- **Leaderboard Rankings** — Real-time position tracking with Redis caching
-- **Performance Optimization** — Zero-cost abstractions for high-frequency score updates
+#### Lapisan Engine Service (Rust Axum)
+- **Engine Gamifikasi** — Pelacakan pencapaian, misi harian, kalkulasi XP
+- **Manajemen Klan** — Pembentukan tim, agregasi skor, perkembangan tingkat
+- **Peringkat Papan Peringkat** — Pelacakan posisi real-time dengan caching Redis
+- **Optimasi Performa** — Abstraksi zero-cost untuk pembaruan skor frekuensi tinggi
 
-## System Interactions
+## Interaksi Sistem
 
-### The BFF (Backend for Frontend) Pattern
+### pattern BFF (Backend for Frontend)
 
-All frontend requests to backend services pass through the Next.js API routes layer. This provides several benefits:
+Semua request frontend ke layanan backend melewati lapisan API routes Next.js. Ini memberikan beberapa keuntungan:
 
-- **Single entry point** — Frontend never calls backend services directly, simplifying CORS and authentication
-- **Request consolidation** — Merge data from multiple backend services into single responses
-- **Authentication enforcement** — Centralized JWT validation before reaching backend services
-- **Response transformation** — Normalize different response formats from Java and Rust
+- **Single entry point** — Frontend tidak pernah memanggil layanan backend secara langsung, menyederhanakan CORS dan autentikasi
+- **Konsolidasi request** — Menggabungkan data dari beberapa layanan backend ke dalam response tunggal
+- **Penegakan autentikasi** — Validasi JWT terpusat sebelum mencapai layanan backend
+- **Transformasi response** — Menormalisasi format response yang berbeda dari Java dan Rust
 
 ```mermaid
 sequenceDiagram
@@ -105,112 +105,112 @@ sequenceDiagram
     Note over BFF,FE: Merge data: user info + leaderboard
 ```
 
-### Communication Flow Details
+### Detail Alur Komunikasi
 
-1. **User Authentication Flow**
-   - Frontend receives Google ID token
-   - Next.js API validates token and creates/updates user in Java service
-   - Java generates outbox event for user creation
-   - Rust engine receives event and creates shadow user
+1. **Alur Autentikasi Pengguna**
+   - Frontend menerima Google ID token
+   - Next.js API memvalidasi token dan membuat/memperbarui pengguna di layanan Java
+   - Java menghasilkan event outbox untuk pembuatan pengguna
+   - Engine Rust menerima event dan membuat shadow user
 
-2. **Leaderboard Request Flow**
-   - Frontend requests leaderboard from Next.js API
-   - API fetches leaderboard from Rust engine
-   - API enriches with user data from Java
-   - API merges and returns unified response
+2. **Alur Permintaan Papan Peringkat**
+   - Frontend meminta papan peringkat dari Next.js API
+   - API mengambil papan peringkat dari engine Rust
+   - API memperkaya dengan data pengguna dari Java
+   - API menggabungkan dan mengembalikan response terpadu
 
-3. **Progress Tracking Flow**
-   - User completes quiz in frontend
-   - Next.js API validates and stores in Java
-   - Java generates progress update event
-   - Rust engine processes for score and achievement calculations
+3. **Alur Pelacakan Kemajuan**
+   - Pengguna menyelesaikan kuis di frontend
+   - Next.js API memvalidasi dan menyimpan di Java
+   - Java menghasilkan event pembaruan kemajuan
+   - Engine Rust memproses untuk kalkulasi skor dan pencapaian
 
-## Key Architectural Characteristics
+## Karakteristik Architecture Utama
 
-| Characteristic | Description |
+| Karakteristik | Deskripsi |
 |----------------|-------------|
-| **Polyglot Services** | Each service uses the optimal language/framework for its domain — Java for business logic, Rust for performance, Next.js for React rendering |
-| **No Shared State** | Separate databases per service (Core_DB, Engine_DB) — no direct cross-database queries |
-| **Event-Driven** | Outbox pattern for async synchronization between services (user creation, progress updates) |
-| **Fault Tolerant** | Graceful degradation: if Rust gamification is down, core features still work via fallback mechanisms |
-| **Bounded Contexts** | Clear boundaries between Auth/User, Articles/Quizzes, League/Clans, Gamification domains |
+| **Polyglot Services** | Setiap layanan menggunakan bahasa/framework optimal untuk domainnya — Java untuk logika bisnis, Rust untuk performa, Next.js untuk rendering React |
+| **No Shared State** | Database terpisah per layanan (Core_DB, Engine_DB) — tidak ada query lintas database secara langsung |
+| **Event-Driven** | pattern Outbox untuk sinkronisasi async antar layanan (pembuatan pengguna, pembaruan kemajuan) |
+| **Fault Tolerant** | Degradasi anggun: jika gamifikasi Rust mati, fitur inti tetap berfungsi melalui mekanisme fallback |
+| **Bounded Contexts** | Batasan jelas antara domain Auth/User, Articles/Quizzes, League/Clans, Gamification |
 
-### Component Responsibilities
+### Tanggung Jawab Komponen
 
-| Component | Technology | Responsibilities |
+| Komponen | Teknologi | Tanggung Jawab |
 |-----------|------------|------------------|
-| **Next.js Frontend** | Next.js 16, React 19, Tailwind | Server-side rendering, API routing, UI component library, API composition |
-| **Java Core Service** | Spring Boot 4.0.2, Java 21 | User authentication, user management, content CRUD (articles/quizzes), outbox event generation |
-| **Rust Engine Service** | Axum 0.8, Rust 2024 | Gamification logic, clan management, leaderboard calculations, achievement tracking |
-| **Outbox Service** | Java background job | Reads outbox events and publishes to Rust via webhook with retry logic |
-| **Shadow User Sync** | Rust background job | Syncs users from Java to Engine_DB via outbox pattern, handles idempotency |
+| **Next.js Frontend** | Next.js 16, React 19, Tailwind | Server-side rendering, routing API, pustaka komponen UI, komposisi API |
+| **Java Core Service** | Spring Boot 4.0.2, Java 21 | Autentikasi pengguna, manajemen pengguna, CRUD konten (artikel/kuis), pembuatan event outbox |
+| **Rust Engine Service** | Axum 0.8, Rust 2024 | Logika gamifikasi, manajemen klan, kalkulasi papan peringkat, pelacakan pencapaian |
+| **Outbox Service** | Java background job | Membaca event outbox dan mempublikasikan ke Rust melalui webhook dengan logika retry |
+| **Shadow User Sync** | Rust background job | Menyinkronkan pengguna dari Java ke Engine_DB melalui pattern outbox, menangani idempotensi |
 
-## Service Communication Patterns
+## pattern Komunikasi Layanan
 
-### Webhook Integration
+### Integrasi Webhook
 
-Java Core Service pushes events to Rust Engine Service via HTTP webhooks:
+Java Core Service mendorong event ke Rust Engine Service melalui HTTP webhooks:
 
-- **Endpoint**: `POST /sync/users` on Rust service
-- **Authentication**: `x-api-key` header with shared secret
-- **Payload**: JSON with user_id, username, email
-- **Retries**: Exponential backoff with dead-letter queue
-- **Idempotency**: Unique event_id ensures duplicate processing is safe
+- **Endpoint**: `POST /sync/users` pada layanan Rust
+- **Autentikasi**: Header `x-api-key` dengan shared secret
+- **Payload**: JSON dengan user_id, username, email
+- **Retry**: Exponential backoff dengan dead-letter queue
+- **Idempotensi**: event_id unik memastikan pemrosesan duplikat aman
 
-### Synchronous Validation
+### Validasi Sinkron
 
-Rust Engine validates user references against Java Core:
+Rust Engine memvalidasi referensi pengguna terhadap Java Core:
 
-- **Endpoint**: `GET /auth/users/{user_id}` on Java service
-- **Authentication**: `x-api-key` header
-- **Caching**: Rust caches user data to reduce RPC calls
-- **Fallback**: Returns cached data if Java service slow/unavailable
+- **Endpoint**: `GET /auth/users/{user_id}` pada layanan Java
+- **Autentikasi**: Header `x-api-key`
+- **Caching**: Rust menyimpan cache data pengguna untuk mengurangi panggilan RPC
+- **Fallback**: Mengembalikan data cache jika layanan Java lambat/tidak tersedia
 
-### API Composition
+### Komposisi API
 
-Frontend merges data from multiple services:
+Frontend menggabungkan data dari beberapa layanan:
 
-- **Single endpoint** → Multiple backend calls
-- **Data aggregation** in Next.js API routes
-- **Consistent response format** using `success`, `message`, `data` structure
-- **Error handling** aggregates errors from both services
+- **Single endpoint** → Beberapa panggilan backend
+- **Agregasi data** di API routes Next.js
+- **Format response konsisten** menggunakan struktur `success`, `message`, `data`
+- **Penanganan error** menggabungkan error dari kedua layanan
 
-## Sub-section Navigation
+## Navigasi Sub-bagian
 
 <Cards>
-  <Card title="System Design" icon="📐" link="/docs/architecture/system-design">
-    Bounded contexts, service decomposition, and polyglot rationale
+  <Card title="Desain Sistem" icon="📐" link="/docs/architecture/system-design">
+    Bounded contexts, dekomposisi layanan, dan alasan poliglot
   </Card>
-  <Card title="Communication Patterns" icon="🔗" link="/docs/architecture/communication">
-    Inter-service communication, API security, and data flow
+  <Card title="pattern Komunikasi" icon="🔗" link="/docs/architecture/communication">
+    Komunikasi antar layanan, keamanan API, dan alur data
   </Card>
-  <Card title="Database Schema" icon="💾" link="/docs/architecture/database-schema">
-    PostgreSQL schemas for Core_DB and Engine_DB
+  <Card title="Skema Database" icon="💾" link="/docs/architecture/database-schema">
+    Skema PostgreSQL untuk Core_DB dan Engine_DB
   </Card>
-  <Card title="Deployment Architecture" icon="🚀" link="/docs/architecture/deployment">
-    AWS EC2 deployment, blue-green strategy, and observability stack
+  <Card title="Architecture Deployment" icon="🚀" link="/docs/architecture/deployment">
+    Deployment AWS EC2, strategi blue-green, dan stack observabilitas
   </Card>
 </Cards>
 
-## Getting Started
+## Memulai
 
-Read the full architecture documentation to understand how Yomu's polyglot services work together to create a scalable learning platform.
+Baca dokumentasi Architecture lengkap untuk memahami bagaimana layanan poliglot Yomu bekerja bersama menciptakan platform pembelajaran yang skalabel.
 
-- [Start with System Design](./system-design) to understand bounded contexts and service boundaries
-- [Learn about Communication](./communication) to see how services exchange data
-- [Explore the Database Schema](./database-schema) for Core_DB and Engine_DB structures
-- [Review Deployment](./deployment) for production setup and monitoring
+- [Mulai dengan Desain Sistem](./system-design) untuk memahami bounded contexts dan batasan layanan
+- [Pelajari tentang Komunikasi](./communication) untuk melihat bagaimana layanan bertukar data
+- [Jelajahi Skema Database](./database-schema) untuk struktur Core_DB dan Engine_DB
+- [Tinjau Deployment](./deployment) untuk setup production dan monitoring
 
-## Why This Architecture?
+## Mengapa Architecture Ini?
 
-The polyglot approach in Yomu addresses several technical challenges:
+Pendekatan poliglot di Yomu mengatasi beberapa tantangan teknis:
 
-| Challenge | Solution |
+| Tantangan | Solusi |
 |-----------|----------|
-| High-frequency leaderboard updates | Rust's zero-cost abstractions for sub-millisecond latency |
-| Complex user authentication | Java's mature security ecosystem with Spring Security |
-| Server-side rendering needs | Next.js for SEO and fast initial page loads |
-| Data consistency | Eventual consistency via outbox pattern |
-| Team scalability | Independent development without coordination overhead |
+| Pembaruan papan peringkat frekuensi tinggi | Abstraksi zero-cost Rust untuk latensi sub-milidetik |
+| Autentikasi pengguna yang kompleks | Ekosistem keamanan Java yang matang dengan Spring Security |
+| Kebutuhan server-side rendering | Next.js untuk SEO dan initial page load yang cepat |
+| Konsistensi data | Eventual consistency melalui pattern outbox |
+| Skalabilitas tim | Pengembangan independen tanpa overhead koordinasi |
 
-This architecture has been tested in production with thousands of concurrent users, demonstrating its ability to scale while maintaining clean separation of concerns.
+Architecture ini telah diuji di production dengan ribuan pengguna konkuren, menunjukkan kemampuannya untuk menskalakan sambil mempertahankan pemisahan tanggung jawab yang bersih.

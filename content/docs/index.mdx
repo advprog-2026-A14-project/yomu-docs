@@ -1,26 +1,26 @@
 ---
-title: Yomu Documentation
-description: Comprehensive documentation for the Yomu polyglot learning platform — architecture, services, CI/CD, and development guides
+title: Dokumentasi Yomu
+description: Dokumentasi lengkap untuk platform pembelajaran poliglot Yomu — Architecture, layanan, CI/CD, dan panduan pengembangan
 ---
 
-Welcome to the official Yomu documentation. Yomu is a polyglot learning platform designed to improve Indonesian literacy through gamified reading and quiz experiences.
+Selamat datang di dokumentasi resmi Yomu. Yomu adalah platform pembelajaran poliglot yang dirancang untuk meningkatkan literasi bahasa Indonesia melalui pengalaman membaca dan kuis yang digamifikasi.
 
-## Quick Navigation
+## Navigasi Cepat
 
 <Cards>
   <Card
     title="Architecture"
-    description="System design, communication patterns, database schema, and deployment"
+    description="Desain sistem, pattern komunikasi, skema database, dan deployment"
     href="/docs/architecture"
   />
   <Card
     title="Java Backend"
-    description="Spring Boot 4 auth/user backend with outbox sync to Rust"
+    description="Backend auth/user Spring Boot 4 dengan sinkronisasi outbox ke Rust"
     href="/docs/backend-java"
   />
   <Card
     title="Rust Backend"
-    description="Axum gamification engine — clans, leaderboards, achievements"
+    description="Engine gamifikasi Axum — klan, papan peringkat, pencapaian"
     href="/docs/backend-rust"
   />
 </Cards>
@@ -28,25 +28,25 @@ Welcome to the official Yomu documentation. Yomu is a polyglot learning platform
 <Cards>
   <Card
     title="Frontend"
-    description="Next.js 16 with BFF pattern, shadcn/ui, and Google OAuth"
+    description="Next.js 16 dengan pattern BFF, shadcn/ui, dan Google OAuth"
     href="/docs/frontend"
   />
   <Card
     title="CI/CD Pipeline"
-    description="GitHub Actions workflows across all three subprojects"
+    description="Workflow GitHub Actions di ketiga subproyek"
     href="/docs/cicd"
   />
   <Card
-    title="Design Decisions"
-    description="Technology choices, trade-off analysis, and design patterns"
+    title="Keputusan Desain"
+    description="Pilihan teknologi, analisis trade-off, dan pattern desain"
     href="/docs/design-decisions"
   />
 </Cards>
 
 <Cards>
   <Card
-    title="Development Guide"
-    description="Setup instructions, Docker configuration, and testing workflows"
+    title="Panduan Pengembangan"
+    description="Instruksi setup, konfigurasi Docker, dan alur pengujian"
     href="/docs/development"
   />
   <Card
@@ -56,7 +56,7 @@ Welcome to the official Yomu documentation. Yomu is a polyglot learning platform
   />
 </Cards>
 
-## Architecture at a Glance
+## Architecture Sekilas
 
 ```mermaid
 flowchart LR
@@ -96,28 +96,28 @@ flowchart LR
     Outbox -->|"REST sync"| Sync
 ```
 
-## Key Principles
+## Prinsip Utama
 
 <Callout type="idea" title="No Shared State">
-Java and Rust each own their database. No cross-database queries — all data exchange goes through REST APIs or gRPC.
+Java dan Rust masing-masing memiliki database sendiri. Tidak ada query lintas database — semua pertukaran data melalui REST API atau gRPC.
 </Callout>
 
 <Callout type="idea" title="Fault Tolerance">
-If the Rust engine is down, Java operations (registration, quiz submission) succeed regardless. Failed syncs are queued and retried.
+Jika engine Rust mati, operasi Java (registrasi, pengiriman kuis) tetap berhasil. Sinkronisasi yang gagal diantrekan dan dicoba ulang.
 </Callout>
 
 <Callout type="idea" title="BFF Pattern">
-The Next.js frontend never calls backends directly. All API calls flow through server-side route handlers that manage authentication cookies.
+Frontend Next.js tidak pernah memanggil backend secara langsung. Semua panggilan API mengalir melalui route handler sisi server yang mengelola cookie autentikasi.
 </Callout>
 
 ## Tech Stack
 
-| Layer | Technology | Version |
+| Lapisan | Teknologi | Versi |
 |-------|-----------|---------|
 | Frontend | Next.js + React | 16 / 19 |
 | Java Backend | Spring Boot | 4.0.2 / Java 21 |
 | Rust Backend | Axum | 0.8.8 / Rust 2024 |
-| Databases | PostgreSQL + Redis | 18 / 8 |
+| Database | PostgreSQL + Redis | 18 / 8 |
 | CI/CD | GitHub Actions | — |
 | Monitoring | Prometheus + Grafana + OpenTelemetry + Sentry + k6 | — |
 | Deployment | AWS EC2 + GHCR + Blue-Green | — |

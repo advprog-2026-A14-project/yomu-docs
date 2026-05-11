@@ -1,96 +1,96 @@
 ---
-title: BFF Pattern & Authentication
-description: Backend-for-Frontend proxy architecture and authentication flow
+title: pattern BFF & Autentikasi
+description: Architecture proxy Backend-for-Frontend dan alur autentikasi
 ---
 
-# BFF Pattern & Authentication
+# pattern BFF & Autentikasi
 
-The frontend implements a Backend-for-Frontend (BFF) architectural pattern, where Next.js acts as an intermediary between the browser and the backend services (Java auth service on port 8080, Rust gamification service on port 8081).
+Frontend mengimplementasikan pattern Architecture Backend-for-Frontend (BFF), di mana Next.js bertindak sebagai perantara antara browser dan layanan backend (layanan auth Java di port 8080, layanan gamifikasi Rust di port 8081).
 
-## BFF Architecture
+## Architecture BFF
 
-All API requests from the browser go through Next.js route handlers. This pattern provides:
+Semua request API dari browser melewati route handler Next.js. pattern ini menyediakan:
 
-- **Security**: Sensitive operations (like OAuth token handling) stay server-side
-- **Aggregation**: Single request can fetch data from multiple backends
-- **Validation**: Centralized response validation via `ApiResponse<T>`
-- **Session Management**: HTTP-only cookies prevent token exposure
+- **Keamanan**: Operasi sensitif (seperti handling token OAuth) tetap di sisi server
+- **Agregasi**: Satu request dapat mengambil data dari beberapa backend
+- **Validasi**: Validasi response terpusat melalui `ApiResponse<T>`
+- **Manajemen Sesi**: HTTP-only cookie mencegah eksposur token
 
 ```mermaid
 sequenceDiagram
     Browser->>Next.js:3000: POST /api/v1/auth/login
     Next.js->>Java:8080: POST /api/v1/auth/login
-    Java->>Next.js: success with access_token and user
-    Next.js->>Browser: Set yomu_access_token cookie
-    Note right of Browser: Cookie is httpOnly, sameSite=lax
-    Browser->>Next.js: Subsequent requests include cookie
-    Next.js->>Java: Authenticated requests
-    Java->>Next.js: Protected resources
+    Java->>Next.js: success dengan access_token dan user
+    Next.js->>Browser: Set cookie yomu_access_token
+    Note right of Browser: Cookie bersifat httpOnly, sameSite=lax
+    Browser->>Next.js: Permintaan selanjutnya menyertakan cookie
+    Next.js->>Java: Permintaan terautentikasi
+    Java->>Next.js: Sumber daya terproteksi
 ```
 
-## Core Proxy Modules
+## Modul Proxy Inti
 
 ### coreProxy.ts
 
-Server-only module that provides the foundation for all API calls:
+Modul server-only yang menyediakan fondasi untuk semua panggilan API:
 
 ```typescript
 // src/lib/server/coreProxy.ts
 export async function coreFetch(path: string, init?: RequestInit) {
   const response = await fetch(`${CORE_API_BASE_URL}${path}`, init);
-  return await response.json<ApiResponse<T>>();
+  return await responsee.json<ApiResponse<T>>();
 }
 ```
 
-**Key behaviors**:
-- Calls `CORE_API_BASE_URL${path}` (env variable)
-- Validates `ApiResponse<T>` response structure
-- Returns parsed JSON with success/message/data fields
+**Perilaku utama**:
+- Memanggil `CORE_API_BASE_URL${path}` (env variable)
+- Memvalidasi struktur response `ApiResponse<T>`
+- Mengembalikan JSON yang sudah diparse dengan field success/message/data
 
 ### cookies.ts
 
-Manages authentication cookies:
+Mengelola cookie autentikasi:
 
-- **Name**: `yomu_access_token`
-- **Attributes**: `httpOnly`, `secure`, `sameSite=lax`, `path=/`
-- **Purpose**: Store JWT tokens without JavaScript access
+- **Nama**: `yomu_access_token`
+- **Atribut**: `httpOnly`, `secure`, `sameSite=lax`, `path=/`
+- **Tujuan**: Menyimpan token JWT tanpa akses JavaScript
 
-## Authentication Flow
+## Alur Autentikasi
 
 ```mermaid
 sequenceDiagram
     autonumber
-    Browser->>Form: User enters credentials
+    Browser->>Form: Pengguna memasukkan kredensial
     Form->>Next.js: POST /api/v1/auth/login
     Next.js->>Java: POST /api/v1/auth/login
-    Java->>Java: Validate credentials
+    Java->>Java: Validasi kredensial
     Java->>Next.js: success=true, role=PELAJAR
-    Next.js->>Next.js: Set yomu_access_token cookie
-    Next.js->>Browser: Redirect to /app or /admin
-    Browser->>Next.js: Subsequent requests with cookie
-    Next.js->>Java: Authenticated API calls
+    Next.js->>Next.js: Set cookie yomu_access_token
+    Next.js->>Browser: Redirect ke /app atau /admin
+    Browser->>Next.js: Permintaan selanjutnya dengan cookie
+    Next.js->>Java: Panggilan API terautentikasi
 ```
 
-## Auth API Functions
+## Fungsi API Auth
 
-Location: `src/lib/api/auth.ts`
+Lokasi: `src/lib/api/auth.ts`
 
-| Function | Description |
+| Fungsi | Deskripsi |
 |----------|-------------|
-| `login(email, password)` | Email/password authentication |
-| `register(user)` | New user registration |
-| `googleLogin(token)` | Google One Tap authentication |
-| `me()` | Get current user (protected) |
-| `logout()` | Clear cookie and session |
+| `login(email, password)` | Autentikasi email/password |
+| `register(user)` | Registrasi pengguna baru |
+| `googleLogin(token)` | Autentikasi Google One Tap |
+| `me()` | Dapatkan pengguna saat ini (terproteksi) |
+| `logout()` | Hapus cookie dan sesi |
 
-## Client Fetcher Pattern
+## pattern Client Fetcher
 
-Location: `src/lib/api/fetcher.ts`
+Lokasi: `src/lib/api/fetcher.ts`
 
 ```typescript
 export async function apiFetch<T>(path: string, options?: RequestInit) {
   const response = await fetch(path, options);
-  const data = await response.json<ApiResponse<T>>();
+  const data = await responsee.json<ApiResponse<T>>();
   
   if (!data.success) throw new Error(data.message);
   
@@ -98,20 +98,20 @@ export async function apiFetch<T>(path: string, options?: RequestInit) {
 }
 ```
 
-**Validation behavior**:
-- Checks `data.success` field
-- Throws on error with message from backend
-- Returns `data.data` on success
+**Perilaku validasi**:
+- Memeriksa field `data.success`
+- Melempar error dengan pesan dari backend
+- Mengembalikan `data.data` saat sukses
 
-## Google OAuth Integration
+## Integrasi Google OAuth
 
-- **Provider**: GoogleOAuthProviderClient wraps Google login button
-- **Configuration**: `CLIENT_ID` from.env via react-oauth-pkce
-- **Button**: GoogleLoginButton component handles One Tap
+- **Provider**: GoogleOAuthProviderClient membungkus tombol login Google
+- **Konfigurasi**: `CLIENT_ID` dari .env via react-oauth-pkce
+- **Tombol**: Komponen GoogleLoginButton menangani One Tap
 
-## Protected Routes
+## Rute Terproteksi
 
-Routes in `/app` and `/admin` check authentication on mount:
+Rute di `/app` dan `/admin` memeriksa autentikasi saat mount:
 
 ```typescript
 'use client';
@@ -120,44 +120,44 @@ export default function ProtectedPage() {
   const { data: user, isLoading } = useQuery({ queryKey: ['me'], queryFn: me });
   
   if (isLoading) return <Loading />;
-  if (!user) redirect('/auth/login'); // 401 redirect
+  if (!user) redirect('/auth/login'); // redirect 401
   
-  // Continue rendering...
+  // Lanjutkan rendering...
 }
 ```
 
-## Role-Based Routing
+## Routing Berbasis Role
 
-| User Role | Redirect Target |
+| Role Pengguna | Target Redirect |
 |-----------|-----------------|
 | `ADMIN` | `/admin` |
 | `PELAJAR` | `/app` |
 
-## Route Handler Pattern
+## pattern Route Handler
 
-All `/api/v1/*` handlers follow this structure:
+Semua handler `/api/v1/*` mengikuti struktur ini:
 
 ```typescript
 // src/app/api/v1/auth/login/route.ts
 export async function POST(request: Request): Promise<Response> {
   const body = await request.json();
-  const response = await coreFetch('/api/v1/auth/login', {
+  const responsee = await coreFetch('/api/v1/auth/login', {
     method: 'POST',
     body: JSON.stringify(body),
   });
   
-  // Set cookie if login successful
-  if (response.success && response.data.access_token) {
+  // Set cookie jika login berhasil
+  if (responsee.success && responsee.data.access_token) {
     // Set httpOnly cookie
-    return NextResponse.json(response);
+    return NextResponse.json(responsee);
   }
   
-  return NextResponse.json(response, { status: 401 });
+  return NextResponse.json(responsee, { status: 401 });
 }
 ```
 
-**Guidelines**:
-- Always return `ApiResponse<T>` structure
-- Validate upstream response before processing
-- Set cookies only on successful authentication
-- Handle errors with appropriate HTTP status codes
+**Panduan**:
+- Selalu kembalikan struktur `ApiResponse<T>`
+- Validasi response upstream sebelum diproses
+- Set cookie hanya saat autentikasi berhasil
+- Tangani error dengan kode status HTTP yang sesuai

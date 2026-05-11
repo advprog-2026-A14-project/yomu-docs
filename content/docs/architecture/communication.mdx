@@ -1,24 +1,24 @@
 ---
-title: Inter-service Communication
-description: Communication patterns between Java Core Service and Rust Engine Service
+title: Komunikasi Antar Layanan
+description: pattern komunikasi antara Java Core Service dan Rust Engine Service
 ---
 
 
-## Communication Patterns Overview
+## Gambaran pattern Komunikasi
 
-Yomu uses three primary communication patterns across its services:
+Yomu menggunakan tiga pattern komunikasi utama di seluruh layanannya:
 
-1. **Webhook / Event-Driven Push** — Java → Rust user data synchronization
-2. **Synchronous Pull** — Rust → Java validation lookups
-3. **API Composition** — Frontend aggregates data from multiple services
+1. **Webhook / Event-Driven Push** — Java → Rust untuk sinkronisasi data pengguna
+2. **Synchronous Pull** — Rust → Java untuk lookup validasi
+3. **API Composition** — Frontend mengagregasi data dari beberapa layanan
 
-Each pattern serves distinct use cases and maintains system resilience.
+Setiap pattern melayani use case yang berbeda dan menjaga ketahanan sistem.
 
-## Pattern 1: Event-Driven Push (Java → Rust)
+## pattern 1: Event-Driven Push (Java → Rust)
 
-When users are created or updated in the Core Service, the Java application generates outbox events that are pushed to the Rust Engine via webhooks.
+Ketika pengguna dibuat atau diperbarui di Core Service, aplikasi Java menghasilkan outbox event yang dikirim ke Rust Engine melalui webhook.
 
-### Implementation Flow
+### Alur Implementasi
 
 ```mermaid
 sequenceDiagram
@@ -26,24 +26,24 @@ sequenceDiagram
     participant OUTBOX as Outbox Service
     participant RUST as Rust Engine Service
 
-    JAVA->>JAVA: Create/Update User
+    JAVA->>JAVA: Buat/Perbarui Pengguna
     JAVA->>OUTBOX: INSERT INTO failed_sync_events<br/>(event_type, payload_json)
     OUTBOX->>RUST: POST /sync/users<br/>X-API-Key: secret
-    Note right of RUST: Parse JSON<br/>Create shadow user in Engine_DB
+    Note right of RUST: Parse JSON<br/>Buat shadow user di Engine_DB
     RUST-->>OUTBOX: 200 OK
     OUTBOX->>OUTBOX: UPDATE failed_sync_events<br/>status = 'completed'
 ```
 
-### Events Type
+### Tipe Event
 
-| Event Type | Payload Structure | Purpose |
+| Tipe Event | Struktur Payload | Tujuan |
 |-----------|-------------------|---------|
-| `USER_CREATED` | `{ user_id, username, email, display_name }` | Create shadow user in Engine_DB |
-| `USER_UPDATED` | `{ user_id, display_name, profile_image }` | Update shadow user profile |
+| `USER_CREATED` | `{ user_id, username, email, display_name }` | Membuat shadow user di Engine_DB |
+| `USER_UPDATED` | `{ user_id, display_name, profile_image }` | Memperbarui profil shadow user |
 | `USER_DELETED` | `{ user_id, deleted_at }` | Soft delete shadow user |
-| `PROGRESS_UPDATE` | `{ user_id, article_id, score }` | Track quiz completion for gamification |
+| `PROGRESS_UPDATE` | `{ user_id, article_id, score }` | Melacak penyelesaian kuis untuk gamifikasi |
 
-### Webhook Configuration
+### Konfigurasi Webhook
 
 ```typescript
 // Java Configuration
@@ -55,23 +55,23 @@ public class OutboxConfig {
     @Value("${outbox.webhook.api-key}")
     private String apiKey;
     
-    // See yomu-backend-java/src/main/java/com/yomu/outbox/service/OutboxService.java
+    // Lihat yomu-backend-java/src/main/java/com/yomu/outbox/service/OutboxService.java
 }
 ```
 
-## Pattern 2: Synchronous Pull (Rust → Java)
+## pattern 2: Synchronous Pull (Rust → Java)
 
-The Rust service needs to validate user existence and fetch additional data not stored in its database.
+Layanan Rust perlu memvalidasi keberadaan pengguna dan mengambil data tambahan yang tidak tersimpan di database-nya.
 
-### Use Case Scenarios
+### Skenario Use Case
 
-| Scenario | Request | Response Data |
+| Skenario | Request | Data Response |
 |----------|---------|---------------|
-| User verification | `GET /users/{user_id}` | User details, email, locked status |
-| Tier lookup | `GET /tier-by-score?score=1500` | Tier name, threshold comparison |
-| Profile enrichment | `GET /users/{user_id}/full` | Profile data, role, created_at |
+| Verifikasi pengguna | `GET /users/{user_id}` | Detail pengguna, email, status terkunci |
+| Lookup tier | `GET /tier-by-score?score=1500` | Nama tier, perbandingan threshold |
+| Pengayaan profil | `GET /users/{user_id}/full` | Data profil, role, created_at |
 
-### Request Flow
+### Alur Request
 
 ```mermaid
 sequenceDiagram
@@ -80,12 +80,12 @@ sequenceDiagram
 
     RUST->>JAVA: GET /auth/users/123e4567-e89b-12d3-a456-426614174000
     Note right of RUST: x-api-key: internal-secret
-    JAVA->>JAVA: Validate API key, Check JWT, Query PostgreSQL
+    JAVA->>JAVA: Validasi API key, Periksa JWT, Query PostgreSQL
     JAVA-->>RUST: 200 OK (user_id, username, display_name)
-    RUST->>RUST: Update cache, Return to client
+    RUST->>RUST: Perbarui cache, Kembalikan ke client
 ```
 
-### Rust Client Implementation
+### Implementasi Klien Rust
 
 ```rust
 // yomu-backend-rust/src/shared/utils/fetch.rs
@@ -106,11 +106,11 @@ pub async fn fetch_user_from_java(user_id: &str) -> Result<Value, Box<dyn Error>
 }
 ```
 
-## Pattern 3: API Composition (Frontend Merging)
+## pattern 3: API Composition (Penggabungan Frontend)
 
-The Next.js frontend aggregates data from both services to provide unified views.
+Frontend Next.js mengagregasi data dari kedua layanan untuk menyediakan tampilan terpadu.
 
-### Leaderboard Page Example
+### Contoh Halaman Leaderboard
 
 ```mermaid
 sequenceDiagram
@@ -125,11 +125,11 @@ sequenceDiagram
     BFF->>JAVA: POST /auth/users/by-ids
     BFF->>JAVA: (ids array) [...] }
     JAVA-->>BFF: (user_id, username, display_name)
-    BFF->>BFF: Merge: leaderboard_entries
+    BFF->>BFF: Gabung: leaderboard_entries
     BFF-->>FE: { leaderboard: [ { user_id, score, username, rank } ] }
 ```
 
-### Frontend Data Aggregation
+### Agregasi Data Frontend
 
 ```typescript
 // yomu-frontend/src/app/leaderboard/page.tsx
@@ -148,11 +148,11 @@ async function getLeaderboardData() {
 }
 ```
 
-## Internal API Security
+## Keamanan API Internal
 
-All internal service-to-service communication uses the `x-api-key` header for authentication.
+Semua komunikasi layanan-ke-layanan internal menggunakan header `x-api-key` untuk autentikasi.
 
-### API Key Configuration
+### Konfigurasi API Key
 
 ```properties
 # Java Core Service
@@ -162,7 +162,7 @@ JAVA_API_KEY=generate-a-secure-random-string-here
 RUST_API_KEY=generate-a-secure-random-string-here
 ```
 
-### API Key Middleware (Rust)
+### Middleware API Key (Rust)
 
 ```rust
 // yomu-backend-rust/src/shared/middleware/api_key.rs
@@ -186,7 +186,7 @@ pub async fn api_key_check<B>(
 }
 ```
 
-### API Key Middleware (Java)
+### Middleware API Key (Java)
 
 ```java
 // yomu-backend-java/src/main/java/com/yomu/security/ApiKeys.java
@@ -207,11 +207,11 @@ public class ApiKeyFilter extends OncePerRequestFilter {
 }
 ```
 
-## JWT Claims Structure
+## Struktur JWT Claims
 
-Internal API requests may include JWT tokens for additional authorization context.
+Request API internal dapat menyertakan token JWT untuk konteks otorisasi tambahan.
 
-### Claims Structure
+### Struktur Claims
 
 ```json
 {
@@ -223,7 +223,7 @@ Internal API requests may include JWT tokens for additional authorization contex
 }
 ```
 
-### Token Generation
+### Pembuatan Token
 
 ```java
 // Java Core Service
@@ -237,11 +237,11 @@ String token = Jwts.builder()
     .compact();
 ```
 
-## Response Wrapper Format
+## Format Response Wrapper
 
-All API responses follow a consistent format for predictable parsing.
+Semua response API mengikuti format yang konsisten untuk parsing yang dapat diprediksi.
 
-### Success Response
+### Response Sukses
 
 ```json
 {
@@ -258,7 +258,7 @@ All API responses follow a consistent format for predictable parsing.
 }
 ```
 
-### Error Response
+### Response Error
 
 ```json
 {
@@ -272,7 +272,7 @@ All API responses follow a consistent format for predictable parsing.
 }
 ```
 
-### Rust Response Helper
+### Helper Response Rust
 
 ```rust
 // yomu-backend-rust/src/shared/utils/response.rs
@@ -296,44 +296,44 @@ pub async fn error(message: &str) -> impl IntoResponse {
 }
 ```
 
-## Golden Rules
+## Aturan Emas
 
-### 1. No Shared State
+### 1. Tanpa Shared State
 
-Each service maintains its own database. Never:
+Setiap layanan memelihara database-nya sendiri. Jangan pernah:
 
-- ❌ Direct database connections between services
-- ❌ SQL joins across Core_DB and Engine_DB
-- ❌ Application-level cache sharing
+- ❌ Koneksi database langsung antar layanan
+- ❌ SQL join antara Core_DB dan Engine_DB
+- ❌ Berbagi cache level aplikasi
 
-Instead:
+Sebaliknya:
 
-- ✅ Use API calls for cross-service data
-- ✅ Use event sync for eventual consistency
-- ✅ Frontend aggregates data from multiple services
+- ✅ Gunakan panggilan API untuk data lintas layanan
+- ✅ Gunakan sinkronisasi event untuk konsistensi eventual
+- ✅ Frontend mengagregasi data dari beberapa layanan
 
-### 2. CI/CD Safety
+### 2. Keamanan CI/CD
 
-- ✅ All webhook endpoints are idempotent
-- ✅ Events include unique `event_id` for deduplication
-- ✅ Retry mechanisms with exponential backoff
-- ✅ Dead-letter queues for failed syncs
+- ✅ Semua endpoint webhook bersifat idempoten
+- ✅ Event menyertakan `event_id` unik untuk deduplikasi
+- ✅ Mekanisme retry dengan exponential backoff
+- ✅ Dead-letter queue untuk sinkronisasi yang gagal
 
 ### 3. Fault Tolerance
 
-- ✅ Java works without Rust (core features available)
-- ✅ Rust works without Java (cached data fallback)
-- ✅ Circuit breaker patterns for synchronous calls
-- ✅ Graceful degradation in API composition
+- ✅ Java bekerja tanpa Rust (fitur inti tersedia)
+- ✅ Rust bekerja tanpa Java (fallback data cache)
+- ✅ Circuit breaker pattern untuk panggilan sinkron
+- ✅ Graceful degradation dalam komposisi API
 
-## Synchronous vs Asynchronous Tradeoffs
+## Trade-off Sinkron vs Asinkron
 
-| Aspect | Synchronous (Pull) | Asynchronous (Push) |
+| Aspek | Sinkron (Pull) | Asinkron (Push) |
 |--------|-------------------|---------------------|
-| **Latency** | Immediate | Delayed (batched) |
-| **Complexity** | Higher (error handling) | Lower (fire-and-forget) |
-| **Reliability** | Manual retry | Automated retry via outbox |
-| **Use Cases** | Validation, lookups, real-time | User creation, profile updates |
-| **Consistency** | Strong (on-demand) | Eventual (batched) |
+| **Latensi** | Langsung | Terlambat (batch) |
+| **Kompleksitas** | Lebih tinggi (error handling) | Lebih rendah (fire-and-forget) |
+| **Keandalan** | Retry manual | Retry otomatis via outbox |
+| **Use Case** | Validasi, lookup, real-time | Pembuatan pengguna, pembaruan profil |
+| **Konsistensi** | Kuat (on-demand) | Eventual (batch) |
 
-The architecture balances both patterns based on domain requirements.
+Architecture menyeimbangkan kedua pattern berdasarkan kebutuhan domain.

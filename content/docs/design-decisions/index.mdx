@@ -1,32 +1,32 @@
 ---
-title: Design Decisions
-description: Architectural decisions, technology choices, and trade-off analysis for Yomu
+title: Keputusan Desain
+description: Keputusan Architecture, pilihan teknologi, dan analisis trade-off untuk Yomu
 ---
 
 
-## Overview
+## Gambaran Umum
 
-This section documents the key architectural decisions that shaped the Yomu platform. Each decision reflects our balance between technical excellence, team capability, and product goals.
+Bagian ini mendokumentasikan keputusan Architecture utama yang membentuk platform Yomu. Setiap keputusan mencerminkan keseimbangan kami antara keunggulan teknis, kemampuan tim, dan tujuan produk.
 
-## Core Architectural Decision
+## Keputusan Architecture Inti
 
 :::callout[type=note]
-We chose a **polyglot microservices** architecture — not a monolith, and not pure microservices with message queues.
+Kami memilih Architecture **polyglot microservices** — bukan monolith, dan bukan pure microservices dengan message queue.
 :::
 
-This decision balances several competing needs:
+Keputusan ini menyeimbangkan beberapa kebutuhan yang bersaing:
 
-| Factor | Monolith | Polyglot Microservices | Pure Microservices |
+| Faktor | Monolith | Polyglot Microservices | Pure Microservices |
 |--------|----------|------------------------|-------------------|
-| Development speed | Fast | Medium | Slow |
-| Team scaling | Hard | Easy | Complex |
-| Deployment simplicity | Simple | Medium | Complex |
-| Performance | Good | Very Good | Best |
-| Operational overhead | Low | Medium | High |
+| Kecepatan pengembangan | Cepat | Sedang | Lambat |
+| Skalabilitas tim | Sulit | Mudah | Kompleks |
+| Kesederhanaan deployment | Sederhana | Sedang | Kompleks |
+| Performa | Baik | Sangat Baik | Terbaik |
+| Overhead operasional | Rendah | Sedang | Tinggi |
 
-### Why Polyglot Microservices?
+### Mengapa Polyglot Microservices?
 
-Yomu's backend is split into specialized services, each optimized for its workload:
+Backend Yomu dibagi menjadi layanan khusus, masing-masing dioptimalkan untuk beban kerjanya:
 
 ```mermaid
 graph LR
@@ -37,22 +37,22 @@ graph LR
     C --> F[Redis]
 ```
 
-**The Java backend** handles authentication, user management, and content operations — heavy business logic with complex relational requirements.
+**Backend Java** menangani autentikasi, manajemen pengguna, dan operasi konten — logika bisnis berat dengan kebutuhan relasional yang kompleks.
 
-**The Rust backend** handles gamification (leaderboards, achievements), clans, and real-time score updates — high-performance operations requiring low latency and high concurrency.
+**Backend Rust** menangani gamifikasi (leaderboard, pencapaian), klan, dan pembaruan skor real-time — operasi performa tinggi yang memerlukan latensi rendah dan konkurensi tinggi.
 
-### Why Not Pure Microservices with Message Queues?
+### Mengapa Bukan Pure Microservices dengan Message Queue?
 
-Full microservices with Kafka/RabbitMQ introduce significant operational complexity:
+Microservices penuh dengan Kafka/RabbitMQ menimbulkan kompleksitas operasional yang signifikan:
 
-- Message queue infrastructure maintenance
-- Handling idempotency and duplicate delivery
-- Debugging async flows across services
-- Event schema versioning and migrations
+- Pemeliharaan infrastruktur message queue
+- Menangani idempotensi dan pengiriman duplikat
+- Debugging alur async di seluruh layanan
+- Versioning skema event dan migrasi
 
-For our team size and product stage, the **outbox pattern** provides sufficient consistency without the operational overhead.
+Untuk ukuran tim dan tahap produk kami, **pattern outbox** menyediakan konsistensi yang cukup tanpa overhead operasional.
 
-### How Services Communicate
+### Bagaimana Layanan Berkomunikasi
 
 ```mermaid
 sequenceDiagram
@@ -63,24 +63,24 @@ sequenceDiagram
     participant Redis
 
     FE->>Java: GET /api/profile
-    Java->>DB: Query user data
-    DB-->>Java: User record
+    Java->>DB: Query data pengguna
+    DB-->>Java: Record pengguna
     Java->>Rust: GET /leaderboard (internal)
-    Rust->>Redis: ZRANK for scores
-    Redis-->>Rust: Score data
-    Rust-->>Java: Leaderboard entry
-    Java-->>FE: JSON response
+    Rust->>Redis: ZRANK untuk skor
+    Redis-->>Rust: Data skor
+    Rust-->>Java: Entri leaderboard
+    Java-->>FE: Respons JSON
 ```
 
-## Architecture Style
+## Gaya Architecture
 
-### Why Two Different Architectures?
+### Mengapa Dua Architecture Berbeda?
 
-Yomu intentionally uses **different architectural patterns** for its two backends. This is not inconsistency — it is a **contextual decision** based on language capabilities, framework conventions, and domain complexity.
+Yomu secara sengaja menggunakan **pattern Architecture yang berbeda** untuk kedua backend-nya. Ini bukan inkonsistensi — ini adalah **keputusan kontekstual** berdasarkan kemampuan bahasa, konvensi framework, dan kompleksitas domain.
 
 ### Rust: Clean Architecture (Hexagonal / Ports & Adapters)
 
-Each Rust module follows [Clean Architecture](/docs/design-architecture/clean-architecture) with four strictly separated layers:
+Setiap modul Rust mengikuti [Clean Architecture](/docs/design-architecture/clean-architecture) dengan empat lapisan yang dipisahkan secara ketat:
 
 ```mermaid
 graph TD
@@ -117,50 +117,50 @@ graph TD
     style INF fill:#fef9c3,stroke:#eab308,stroke-width:2px,color:#713f12
 ```
 
-**The Rust backend handles gamification logic** — a domain with complex business rules: achievement milestones, mission completion chains, clan score calculations, tier progression, and leaderboard ranking. Clean Architecture isolates these rules from Axum, SQLx, and Redis, making the domain:
+**Backend Rust menangani logika gamifikasi** — sebuah domain dengan aturan bisnis kompleks: milestone pencapaian, rantai penyelesaian misi, perhitungan skor klan, progresi tier, dan peringkat leaderboard. Clean Architecture mengisolasi aturan-aturan ini dari Axum, SQLx, dan Redis, membuat domain:
 
-- **Testable without a database** — mock repository traits with `mockall`
-- **Framework-agnostic** — replace Axum with Actix-web without touching business logic
-- **Compiler-enforced** — Rust's visibility rules (`pub(crate)`, module boundaries) make it physically impossible for domain code to import `sqlx` or `axum`
+- **Dapat diuji tanpa database** — mock repository traits dengan `mockall`
+- **Agnostik terhadap framework** — ganti Axum dengan Actix-web tanpa menyentuh logika bisnis
+- **Ditegakkan oleh compiler** — aturan visibilitas Rust (`pub(crate)`, batasan modul) membuat mustahil secara fisik bagi kode domain untuk mengimpor `sqlx` atau `axum`
 
 ```rust
-// Domain knows NOTHING about HTTP, SQL, or JSON
+// Domain TIDAK TAHU apa pun tentang HTTP, SQL, atau JSON
 pub struct Clan {
     id: Uuid,
-    name: ClanName,        // Value object — validated
+    name: ClanName,        // Value object — tervalidasi
     leader_id: Uuid,
     created_at: DateTime<Utc>,
 }
 ```
 
-The cost is **verbosity**: every feature requires a trait (port), an implementation (adapter), a use case, a DTO, and a controller. For Yomu's high-performance gamification engine, this overhead is justified by the correctness guarantees and testability.
+Biayanya adalah **verbositas**: setiap fitur memerlukan trait (port), implementasi (adapter), use case, DTO, dan controller. Untuk mesin gamifikasi performa tinggi Yomu, overhead ini dibenarkan oleh jaminan kebenaran dan kemampuan pengujian.
 
-Read the full [Clean Architecture deep-dive](/docs/design-architecture/clean-architecture) for theoretical foundations, the Dependency Rule, and why Rust's type system makes Clean Architecture mechanically enforceable.
+Baca [pendalaman Clean Architecture](/docs/design-architecture/clean-architecture) selengkapnya untuk fondasi teoritis, Dependency Rule, dan mengapa sistem tipe Rust membuat Clean Architecture dapat ditegakkan secara mekanis.
 
 ### Java: Layered Architecture (Controller → Service → Repository)
 
-Java follows a [Layered Architecture](/docs/design-architecture/layered) with Spring Boot's conventional MVC structure:
+Java mengikuti [Layered Architecture](/docs/design-architecture/layered) dengan struktur MVC konvensional Spring Boot:
 
 ```
 src/
 ├── main/java/com/yomu/
-│   ├── auth/        # Controllers, services, repositories
-│   ├── user/        # User management
-│   ├── bacaankuis/  # Articles and quizzes
-│   ├── forum/       # Comments and discussions
-│   ├── outbox/      # Event synchronization
-│   └── security/    # JWT, OAuth, filters
+│   ├── auth/        # Controller, service, repository
+│   ├── user/        # Manajemen pengguna
+│   ├── bacaankuis/  # Artikel dan kuis
+│   ├── forum/       # Komentar dan diskusi
+│   ├── outbox/      # Sinkronisasi event
+│   └── security/    # JWT, OAuth, filter
 ```
 
-**The Java backend handles authentication and content CRUD** — domains dominated by framework integration (Spring Security, JPA/Hibernate, OAuth2) rather than complex algorithmic logic. Layered Architecture leverages Spring Boot's strengths:
+**Backend Java menangani autentikasi dan CRUD konten** — domain yang didominasi oleh integrasi framework (Spring Security, JPA/Hibernate, OAuth2) daripada logika algoritmik kompleks. Layered Architecture memanfaatkan kekuatan Spring Boot:
 
-- **Spring Data JPA** auto-generates repositories from interfaces — zero boilerplate
-- **`@Transactional`** wraps service methods with AOP proxies for atomicity
-- **Bean Validation** (`@Valid`, `@Email`, `@NotNull`) integrates with controllers
-- **Team familiarity** — most Spring developers know Controller-Service-Repository
+- **Spring Data JPA** menghasilkan repository secara otomatis dari interface — nol boilerplate
+- **`@Transactional`** membungkus metode service dengan proxy AOP untuk atomisitas
+- **Bean Validation** (`@Valid`, `@Email`, `@NotNull`) terintegrasi dengan controller
+- **Keakraban tim** — sebagian besar pengembang Spring mengenal Controller-Service-Repository
 
 ```java
-// Entity doubles as domain model AND persistence schema
+// Entity berfungsi ganda sebagai domain model DAN skema persistence
 @Entity
 public class User {
     @Id @GeneratedValue(strategy = GenerationType.UUID)
@@ -175,59 +175,59 @@ public class User {
 }
 ```
 
-Attempting Clean Architecture in Java would mean **fighting the framework**: duplicating entities (JPA Entity + Domain Entity + Mapper), manually wiring transactions instead of `@Transactional`, and losing lazy loading, dirty checking, and second-level cache.
+Mencoba Clean Architecture di Java berarti **melawan framework**: menduplikasi entity (JPA Entity + Domain Entity + Mapper), mem-wire transaksi secara manual alih-alih `@Transactional`, dan kehilangan lazy loading, dirty checking, dan second-level cache.
 
-The trade-off is **coupling**: JPA annotations live on entities, services depend on Spring's IoC container, and repositories are framework-generated. For Yomu's Java domain — which is CRUD-heavy with straightforward rules — this coupling is acceptable.
+Trade-off-nya adalah **coupling**: anotasi JPA berada pada entity, service bergantung pada IoC container Spring, dan repository dihasilkan oleh framework. Untuk domain Java Yomu — yang didominasi CRUD dengan aturan sederhana — coupling ini dapat diterima.
 
-Read the full [Layered Architecture deep-dive](/docs/design-architecture/layered) for theoretical foundations, framework synergy, and when Layered Architecture breaks down.
+Baca [pendalaman Layered Architecture](/docs/design-architecture/layered) selengkapnya untuk fondasi teoritis, sinergi framework, dan kapan Layered Architecture mulai bermasalah.
 
-### The Comparison
+### Perbandingan
 
-| Dimension | Rust Clean Architecture | Java Layered Architecture |
+| Dimensi | Rust Clean Architecture | Java Layered Architecture |
 |-----------|------------------------|---------------------------|
-| **Primary concern** | Complex domain logic isolation | Framework integration velocity |
-| **Domain complexity** | High (achievements, missions, scoring) | Medium (CRUD, auth flows) |
-| **Framework coupling** | Zero — domain is framework-agnostic | High — entities use JPA annotations |
-| **Test speed** | Microseconds (no DB needed) | Seconds (Spring context or Mockito) |
-| **Compiler enforcement** | Absolute — cannot import sqlx in domain | None — convention-based |
-| **Boilerplate** | High (traits, DTOs, mappers) | Low (Spring generates repositories) |
-| **Team onboarding** | Slow (Rust + architecture training) | Fast (standard Spring knowledge) |
-| **Best for** | Algorithmic, performance-critical domains | CRUD-heavy, standard enterprise apps |
+| **Fokus utama** | Isolasi logika domain kompleks | Kecepatan integrasi framework |
+| **Kompleksitas domain** | Tinggi (pencapaian, misi, skoring) | Sedang (CRUD, alur auth) |
+| **Coupling framework** | Nol — domain agnostik framework | Tinggi — entity menggunakan anotasi JPA |
+| **Kecepatan pengujian** | Mikrodetik (tidak perlu DB) | Detik (Spring context atau Mockito) |
+| **Penegakan compiler** | Mutlak — tidak bisa impor sqlx di domain | Tidak ada — berbasis konvensi |
+| **Boilerplate** | Tinggi (traits, DTOs, mappers) | Rendah (Spring menghasilkan repository) |
+| **Onboarding tim** | Lambat (pelatihan Rust + Architecture) | Cepat (pengetahuan Spring standar) |
+| **Terbaik untuk** | Domain algoritmik, kritis performa | Aplikasi CRUD-heavy, enterprise standar |
 
-### Why Not Unify on One Architecture?
+### Mengapa Tidak Menyatukan pada Satu Architecture?
 
-We evaluated using the same architecture for both backends and rejected it:
+Kami mengevaluasi penggunaan Architecture yang sama untuk kedua backend dan menolaknya:
 
-**Option A: Clean Architecture in both**
-- Java would lose Spring Data JPA, `@Transactional`, and lazy loading
-- Massive boilerplate for simple CRUD (duplicate entities, manual SQL, manual mapping)
-- Team retraining required
-- **Verdict**: Over-engineering for Java's domain
+**Opsi A: Clean Architecture di keduanya**
+- Java akan kehilangan Spring Data JPA, `@Transactional`, dan lazy loading
+- Boilerplate masif untuk CRUD sederhana (entity duplikat, SQL manual, mapping manual)
+- Perlu pelatihan ulang tim
+- **Putusan**: Over-engineering untuk domain Java
 
-**Option B: Layered Architecture in both**
-- Rust would lose compiler-enforced boundaries
-- Business logic would leak into Axum controllers and SQLx queries
-- Testing would require PostgreSQL + Redis for every unit test
-- **Verdict**: Under-engineering for Rust's domain
+**Opsi B: Layered Architecture di keduanya**
+- Rust akan kehilangan batasan yang ditegakkan compiler
+- Logika bisnis akan bocor ke controller Axum dan query SQLx
+- Pengujian akan memerlukan PostgreSQL + Redis untuk setiap unit test
+- **Putusan**: Under-engineering untuk domain Rust
 
-**Option C: Contextual architecture (chosen)**
-- Rust gets strict boundaries for complex gamification logic
-- Java gets velocity for standard auth/content CRUD
-- Each backend optimized for its language ecosystem
-- **Verdict**: Pragmatic polyglot architecture
+**Opsi C: Architecture kontekstual (dipilih)**
+- Rust mendapat batasan ketat untuk logika gamifikasi kompleks
+- Java mendapat kecepatan untuk CRUD auth/konten standar
+- Setiap backend dioptimalkan untuk ekosistem bahasanya
+- **Putusan**: Architecture polyglot pragmatis
 
-## Decision Matrix
+## Matriks Keputusan
 
-### Decision: Polyglot Microservices
+### Keputusan: Polyglot Microservices
 
-| Decision | Rationale | Alternatives Considered | Pros | Cons |
+| Keputusan | Alasan | Alternatif Dipertimbangkan | Kelebihan | Kekurangan |
 |----------|-----------|------------------------|------|------|
-| Polyglot (Java + Rust) | Optimize each service for its workload | Single language microservices | Best performance for gamification, mature ecosystem for auth | Deployment complexity, inter-service calls |
-| Service-based (not pure microservices) | Minimal messaging infrastructure | Kafka/RabbitMQ | Simpler operations, outbox pattern for consistency | Eventual consistency window |
-| Clean Architecture (Rust only) | Testability, maintainability, layer separation for complex gamification logic | Layered architecture for Rust | Domain logic isolated, compiler-enforced boundaries, easy to mock | High boilerplate: traits + DTOs + mappers per feature |
-| BFF Pattern (Next.js API) | Hide backend complexity from frontend | Direct frontend → backend calls | Centralized auth, response formatting, caching | Extra hop, Next.js server load |
+| Polyglot (Java + Rust) | Optimalkan setiap layanan untuk beban kerjanya | Microservices bahasa tunggal | Performa terbaik untuk gamifikasi, ekosistem matang untuk auth | Kompleksitas deployment, panggilan antar-layanan |
+| Berbasis layanan (bukan pure microservices) | Infrastruktur messaging minimal | Kafka/RabbitMQ | Operasi lebih sederhana, pattern outbox untuk konsistensi | Jendela eventual consistency |
+| Clean Architecture (hanya Rust) | Testabilitas, maintainabilitas, pemisahan lapisan untuk logika gamifikasi kompleks | Layered Architecture untuk Rust | Logika domain terisolasi, batasan ditegakkan compiler, mudah di-mock | Boilerplate tinggi: traits + DTOs + mappers per fitur |
+| pattern BFF (Next.js API) | Sembunyikan kompleksitas backend dari frontend | Panggilan langsung frontend → backend | Auth terpusat, pemformatan response, caching | Hop ekstra, beban server Next.js |
 
-## Sub-Pages
+## Sub-Halaman
 
-- [Technology Choices](/docs/design-decisions/technology-choices) — Why Java, Rust, Next.js, PostgreSQL, Redis
-- [Design Patterns](/docs/design-decisions/patterns) — Repository, Use Case, Factory, Outbox, and more
+- [Pilihan Teknologi](/docs/design-decisions/technology-choices) — Mengapa Java, Rust, Next.js, PostgreSQL, Redis
+- [pattern Desain](/docs/design-decisions/patterns) — Repository, Use Case, Factory, Outbox, dan lainnya

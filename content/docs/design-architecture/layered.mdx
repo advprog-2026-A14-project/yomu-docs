@@ -1,15 +1,15 @@
 ---
 title: Layered Architecture
-description: Theoretical foundation for Spring Boot's conventional layered architecture (Controller → Service → Repository) and why it fits Java's ecosystem better than Clean Architecture for Yomu
+description: Fondasi teoritis untuk Layered Architecture konvensional Spring Boot (Controller → Service → Repository) dan mengapa lebih cocok untuk ekosistem Java daripada Clean Architecture untuk Yomu
 ---
 
 # Layered Architecture
 
-Yomu's Java backend uses **Layered Architecture**, the de facto standard for Spring Boot applications. Unlike Rust's Clean Architecture, which enforces strict concentric boundaries through the compiler, Java's Layered Architecture leverages the **framework's built-in conventions** (Dependency Injection, auto-configuration, and Spring Data JPA) to achieve a pragmatic separation of concerns.
+Backend Java Yomu menggunakan **Layered Architecture (Layered Architecture)**, standar de facto untuk aplikasi Spring Boot. Tidak seperti Clean Architecture Rust yang memberlakukan batasan konsentris ketat melalui compiler, Layered Architecture Java memanfaatkan **konvensi built-in framework** (Dependency Injection, auto-configuration, dan Spring Data JPA) untuk mencapai separation of concerns yang pragmatis.
 
-## The Core Philosophy
+## Filosofi Inti
 
-Layered Architecture organizes code into horizontal layers where each layer has a specific responsibility. The classic Spring Boot stack uses three layers:
+Layered Architecture mengatur kode ke dalam layer horizontal di mana setiap layer memiliki tanggung jawab spesifik. Spring Boot klasik menggunakan tiga layer:
 
 ```mermaid
 graph TD
@@ -71,30 +71,30 @@ graph TD
     style INT fill:#f3e8ff,stroke:#a855f7,stroke-width:2px,color:#581c87
 ```
 
-### The Layered Dependency Rule
+### Aturan Dependensi Berlapis
 
-Unlike Clean Architecture's strict "dependencies only inward" rule, Layered Architecture has a **more pragmatic flow**:
+Tidak seperti Clean Architecture yang memiliki aturan "dependensi hanya ke dalam" yang ketat, Layered Architecture memiliki **aliran yang lebih pragmatis**:
 
-| Layer | Depends On | What It Knows |
+| Layer | Bergantung Pada | Yang Diketahui |
 |-------|-----------|---------------|
 | **Controller** | Service, DTOs | HTTP, JSON, validation, Spring annotations |
-| **Service** | Repository, Entities, Integration | Business logic, transactions, Spring `@Transactional` |
-| **Repository** | Entities, JPA/Hibernate | Database queries, ORM mappings, Spring Data |
-| **Entity** | JPA annotations (`@Entity`, `@Id`) | Domain state, validation constraints, relationships |
-| **Integration** | HTTP clients, gRPC stubs | External service protocols, serialization |
+| **Service** | Repository, Entities, Integration | Business logic, transaction, Spring `@Transactional` |
+| **Repository** | Entities, JPA/Hibernate | Query database, mapping ORM, Spring Data |
+| **Entity** | JPA annotations (`@Entity`, `@Id`) | Domain state, constraint validasi, relationship |
+| **Integration** | HTTP clients, gRPC stubs | Protokol service eksternal, serialization |
 
-## The Five Layers in Yomu Java
+## Lima Layer di Yomu Java
 
 ### 1. Entity Layer — The "What"
 
-In Spring Boot, entities are **JPA-mapped domain objects** that serve dual purpose: they represent domain state AND define database schema.
+Di Spring Boot, entity adalah **objek domain yang dimapping dengan JPA** yang memiliki dua tujuan: merepresentasikan state domain DAN mendefinisikan schema database.
 
-**Contents:**
-- **JPA Entities** — `@Entity` classes with `@Id`, `@Column`, `@OneToMany` mappings
-- **Validation Constraints** — `@NotNull`, `@Email`, `@Size` annotations
-- **Entity Relationships** — `@OneToOne`, `@ManyToOne`, `@OneToMany` for relational mapping
+**Konten:**
+- **JPA Entities** — Kelas `@Entity` dengan mapping `@Id`, `@Column`, `@OneToMany`
+- **Validation Constraints** — Anotasi `@NotNull`, `@Email`, `@Size`
+- **Entity Relationships** — `@OneToOne`, `@ManyToOne`, `@OneToMany` untuk mapping relasional
 
-**Why JPA entities as domain?** Spring Data JPA tightly couples the domain model to the persistence framework. This is a **conscious trade-off**: it eliminates mapping boilerplate but means entities know about JPA.
+**Mengapa entity JPA sebagai domain?** Spring Data JPA secara ketat menggabungkan domain model dengan persistence framework. Ini adalah **trade-off yang disadari**: menghilangkan boilerplate mapping tetapi berarti entities tahu tentang JPA.
 
 ```java
 // src/main/java/com/yomu/user/domain/User.java
@@ -129,16 +129,16 @@ public class User {
 }
 ```
 
-### 2. Repository Layer — The "How We Persist"
+### 2. Repository Layer — "Cara Kita Menyimpan"
 
-Spring Data JPA provides repository interfaces that auto-generate queries at runtime. This is **radically different** from Rust's explicit trait definitions.
+Spring Data JPA menyediakan interface repository yang auto-generate query pada runtime. Ini **sangat berbeda** dari definisi trait eksplisit Rust.
 
-**Contents:**
-- **Repository Interfaces** — Extending `JpaRepository<T, ID>` or `CrudRepository`
-- **Query Methods** — Method names parsed into SQL (`findByEmail`, `findByRoleAndDeletedAtIsNull`)
-- **Custom Queries** — `@Query` annotations for complex JPQL/SQL
+**Konten:**
+- **Repository Interfaces** — Memperluas `JpaRepository<T, ID>` atau `CrudRepository`
+- **Query Methods** — Nama method diurai menjadi SQL (`findByEmail`, `findByRoleAndDeletedAtIsNull`)
+- **Custom Queries** — Anotasi `@Query` untuk JPQL/SQL kompleks
 
-**Key characteristic:** Repositories are **framework-generated** implementations. You define the interface; Spring creates the class at runtime via proxies.
+**Karakteristik utama:** Repository adalah implementasi yang **di-generate oleh framework**. Anda mendefinisikan interface; Spring membuat kelasnya pada runtime melalui proxy.
 
 ```java
 // src/main/java/com/yomu/user/repository/UserRepository.java
@@ -146,7 +146,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     // Auto-generated query: SELECT * FROM users WHERE email = ? AND deleted_at IS NULL
     Optional<User> findByEmailAndDeletedAtIsNull(String email);
 
-    // Auto-generated query with pagination
+    // Auto-generated query dengan pagination
     Page<User> findByRole(Role role, Pageable pageable);
 
     // Custom JPQL query
@@ -155,17 +155,17 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 }
 ```
 
-### 3. Service Layer — The "Business Logic"
+### 3. Service Layer — "Business Logic"
 
-The Service layer contains **business operations** orchestrating repositories and external services. Unlike Rust's use cases (one per file), Java services often group related operations into a single class.
+Service layer berisi **operasi bisnis** yang mengorkestrasi repository dan external services. Tidak seperti use case Rust (satu per file), service Java sering mengelompokkan operasi terkait ke dalam satu kelas.
 
-**Contents:**
-- **Services** — `@Service` classes with `@Autowired` dependencies
-- **Transactional Boundaries** — `@Transactional` annotations for atomicity
-- **Business Rules** — Validation, state transitions, calculation logic
+**Konten:**
+- **Services** — Kelas `@Service` dengan dependensi `@Autowired`
+- **Transactional Boundaries** — Anotasi `@Transactional` untuk atomicity
+- **Business Rules** — Validasi, transisi state, logic kalkulasi
 - **Cross-Cutting Concerns** — Logging, metrics, event publishing
 
-**Key characteristic:** Services are **stateless** singletons managed by Spring's IoC container. They hold references to repositories and integration clients.
+**Karakteristik utama:** Services adalah singleton **stateless** yang dikelola oleh IoC container Spring. Mereka menyimpan referensi ke repository dan integration clients.
 
 ```java
 // src/main/java/com/yomu/auth/service/AuthService.java
@@ -200,17 +200,17 @@ public class AuthService {
 }
 ```
 
-### 4. Controller Layer — The "HTTP Interface"
+### 4. Controller Layer — "HTTP Interface"
 
-Controllers handle HTTP requests, delegate to services, and return standardized responses.
+Controller menangani HTTP request, mendelegasikan ke service, dan mengembalikan response yang terstandarisasi.
 
-**Contents:**
-- **REST Controllers** — `@RestController` classes with `@RequestMapping`
-- **Request DTOs** — `@Valid` annotated input objects
-- **Response Wrappers** — `ApiResponse<T>` for uniform JSON structure
-- **Exception Handlers** — `@ControllerAdvice` for centralized error handling
+**Konten:**
+- **REST Controllers** — Kelas `@RestController` dengan `@RequestMapping`
+- **Request DTOs** — Objek input yang dianotasi `@Valid`
+- **Response Wrappers** — `ApiResponse<T>` untuk struktur JSON seragam
+- **Exception Handlers** — `@ControllerAdvice` untuk error handling terpusat
 
-**Key characteristic:** Controllers are **thin**. They contain no business logic — only HTTP concern mapping.
+**Karakteristik utama:** Controller adalah **tipis**. Mereka tidak mengandung business logic — hanya mapping HTTP concern.
 
 ```java
 // src/main/java/com/yomu/auth/controller/AuthController.java
@@ -229,15 +229,15 @@ public class AuthController {
 }
 ```
 
-### 5. Integration Layer — The "External World"
+### 5. Integration Layer — "Dunia Eksternal"
 
-The Integration layer manages communication with external services (Rust backend, OAuth providers, payment gateways).
+Integration layer mengelola komunikasi dengan external services (Rust backend, OAuth providers, payment gateways).
 
-**Contents:**
-- **HTTP Clients** — `RestClient` or `WebClient` wrappers for REST APIs
-- **gRPC Clients** — Stub implementations for protobuf services
+**Konten:**
+- **HTTP Clients** — Wrapper `RestClient` atau `WebClient` untuk REST APIs
+- **gRPC Clients** — Implementasi stub untuk protobuf services
 - **Message Publishers** — Outbox event writers, Kafka producers (future)
-- **DTO Mappers** — Conversion between external schemas and internal DTOs
+- **DTO Mappers** — Konversi antara schema eksternal dan DTO internal
 
 ```java
 // src/main/java/com/yomu/integration/rust/RestClientRustEngineClient.java
@@ -261,54 +261,54 @@ public class RestClientRustEngineClient {
 }
 ```
 
-## Why Layered Architecture for Yomu Java?
+## Mengapa Layered Architecture untuk Yomu Java?
 
-### 1. Framework Synergy
+### 1. Sinergi Framework
 
-Spring Boot is **designed** for Layered Architecture. Its DI container, auto-configuration, and starter dependencies assume this structure:
+Spring Boot **dirancang** untuk Layered Architecture. DI container, auto-configuration, dan starter dependencies mengasumsikan struktur ini:
 
-- `@Entity` → `@Repository` → `@Service` → `@Controller` is the **happy path**
-- Spring Data JPA generates repositories from interfaces — no manual implementation
-- `@Transactional` wraps service methods with AOP proxies
-- `@Valid` triggers Bean Validation automatically
+- `@Entity` → `@Repository` → `@Service` → `@Controller` adalah **happy path**
+- Spring Data JPA menghasilkan repository dari interface — tanpa implementasi manual
+- `@Transactional` membungkus method service dengan AOP proxy
+- `@Valid` memicu Bean Validation secara otomatis
 
-Attempting Clean Architecture in Spring Boot means **fighting the framework**:
+Menerapkan Clean Architecture di Spring Boot berarti **melawan framework**:
 
 ```java
-// Fighting Spring: separating domain from JPA
-// Option A: Duplicate models (JPA Entity + Domain Entity + Mapper)
-// Option B: Accept JPA leakage into domain
-// Most teams choose B, which is pragmatically Layered Architecture
+// Melawan Spring: memisahkan domain dari JPA
+// Opsi A: Duplicate models (JPA Entity + Domain Entity + Mapper)
+// Opsi B: Menerima kebocoran JPA ke domain
+// Kebanyakan tim memilih B, yang secara pragmatis adalah Layered Architecture
 ```
 
-### 2. Developer Velocity
+### 2. Kecepatan Developer
 
-Layered Architecture in Spring Boot offers **maximum velocity** for CRUD-heavy domains:
+Layered Architecture di Spring Boot menawarkan **kecepatan maksimum** untuk domain CRUD-heavy:
 
-| Task | Spring Boot Layered | Rust Clean Arch |
+| Tugas | Spring Boot Berlapis | Rust Clean Arch |
 |------|-------------------|-----------------|
-| Add a new entity | 1 file (`@Entity`) | 3 files (Entity, Value Object, Factory) |
-| Add a repository | 1 interface (`JpaRepository`) | 2 files (Trait + Postgres impl) |
-| Add a query | Method name convention | SQL macro + compile-time checking |
-| Add a CRUD endpoint | Controller + Service (2 files) | Controller + Use Case + DTOs (4+ files) |
-| Transaction boundary | `@Transactional` annotation | Manual transaction management |
+| Menambah entity baru | 1 file (`@Entity`) | 3 files (Entity, Value Object, Factory) |
+| Menambah repository | 1 interface (`JpaRepository`) | 2 files (Trait + Postgres impl) |
+| Menambah query | Konvensi nama method | SQL macro + compile-time checking |
+| Menambah CRUD endpoint | Controller + Service (2 files) | Controller + Use Case + DTOs (4+ files) |
+| Transaction boundary | Anotasi `@Transactional` | Manajemen transaction manual |
 
-For Yomu's Java backend — which handles **authentication, content CRUD, and outbox events** — the operations are predominantly CRUD with straightforward business rules. The overhead of Clean Architecture's strict boundaries yields diminishing returns.
+Untuk backend Java Yomu — yang menangani **authentication, content CRUD, dan outbox events** — operasinya mayoritas CRUD dengan business rules yang straightforward. Overhead dari batasan ketat Clean Architecture memberikan diminishing returns.
 
-### 3. Team Familiarity
+### 3. Familiaritas Tim
 
-The Java ecosystem has **decades** of Layered Architecture practice:
+Ekosistem Java memiliki **puluhan tahun** praktik Layered Architecture:
 
-- **Hiring**: Most Spring Boot developers know Controller-Service-Repository
-- **Tooling**: IntelliJ IDEA recognizes these layers and provides navigation
-- **Documentation**: Spring's official guides all use this pattern
-- **Community**: Stack Overflow answers assume this structure
+- **Hiring**: Kebanyakan developer Spring Boot tahu Controller-Service-Repository
+- **Tooling**: IntelliJ IDEA mengenali layer ini dan menyediakan navigasi
+- **Documentation**: Panduan resmi Spring semuanya menggunakan pattern ini
+- **Community**: Jawaban Stack Overflow mengasumsikan struktur ini
 
-Introducing Clean Architecture to a Java team means retraining and fighting ecosystem conventions.
+Memperkenalkan Clean Architecture ke tim Java berarti pelatihan ulang dan melawan konvensi ekosistem.
 
 ### 4. Transactional Boundaries
 
-Java's ACID transactions are **elegant** in Layered Architecture:
+ACID transaction Java **elegan** di Layered Architecture:
 
 ```java
 @Service
@@ -319,80 +319,80 @@ public class OutboxService {
 
     @Transactional
     public void createClanWithOutbox(Clan clan) {
-        // Both operations in ONE atomic transaction
+        // Kedua operasi dalam SATU atomic transaction
         clanRepository.save(clan);
         outboxRepository.save(new OutboxMessage("clan.created", clan));
-        // If either fails, BOTH rollback
+        // Jika salah satu gagal, KEDUANYA rollback
     }
 }
 ```
 
-In Clean Architecture, transactions span multiple layers (Application calls Domain calls Infrastructure), making boundary management complex. Spring's `@Transactional` AOP proxy handles this seamlessly in Layered Architecture.
+Di Clean Architecture, transaction membentang beberapa layer (Application memanggil Domain memanggil Infrastructure), membuat manajemen boundary menjadi kompleks. AOP proxy `@Transactional` Spring menangani ini dengan mulus di Layered Architecture.
 
-### 5. ORM Integration
+### 5. Integrasi ORM
 
-JPA/Hibernate is **deeply integrated** into Layered Architecture:
+JPA/Hibernate **terintegrasi dalam** Layered Architecture:
 
-- **Lazy Loading**: `@OneToMany(fetch = LAZY)` works because the entity IS the persistence model
-- **Dirty Checking**: Hibernate automatically detects changed fields and generates UPDATE SQL
-- **Caching**: Second-level cache annotations (`@Cacheable`) sit on entities
-- **Migrations**: Flyway/Liquibase schemas map 1:1 with `@Entity` classes
+- **Lazy Loading**: `@OneToMany(fetch = LAZY)` berfungsi karena entity ADALAH model persistence
+- **Dirty Checking**: Hibernate secara otomatis mendeteksi field yang berubah dan menghasilkan UPDATE SQL
+- **Caching**: Anotasi second-level cache (`@Cacheable`) berada di entities
+- **Migrations**: Schema Flyway/Liquibase mapping 1:1 dengan kelas `@Entity`
 
-Separating domain from persistence (as Clean Architecture requires) means **losing these benefits** or adding heavy mapping layers (MapStruct, ModelMapper).
+Memisahkan domain dari persistence (seperti yang diperlukan Clean Architecture) berarti **kehilangan benefit ini** atau menambahkan layer mapping yang berat (MapStruct, ModelMapper).
 
-## Trade-offs of Layered Architecture
+## Trade-offs Layered Architecture
 
 | Benefit | Cost |
 |---------|------|
-| Maximum developer velocity | Business logic can leak into controllers |
-| Framework synergy | Domain model coupled to JPA annotations |
-| Easy transactions with `@Transactional` | Harder to test without Spring context |
-| Auto-generated repositories | Less control over SQL (N+1 query risks) |
-| Team familiarity | Junior devs may skip service layer logic |
-| ORM benefits (lazy loading, caching) | Entities mutable outside services |
+| Kecepatan developer maksimum | Business logic bisa bocor ke controllers |
+| Sinergi framework | Domain model terikat ke JPA annotations |
+| Transaction mudah dengan `@Transactional` | Lebih sulit diuji tanpa Spring context |
+| Repository auto-generated | Kontrol lebih sedikit atas SQL (risiko N+1 query) |
+| Familiaritas tim | Developer junior mungkin melewatkan logic service layer |
+| ORM benefits (lazy loading, caching) | Entities bisa mutable di luar services |
 
-## When Layered Architecture Breaks Down
+## Kapan Layered Architecture Gagal
 
-Layered Architecture becomes problematic when:
+Layered Architecture menjadi problematik ketika:
 
-1. **Business rules are complex** — If services grow to 500+ lines with nested conditionals, extract domain services or use DDD aggregates
-2. **Multiple delivery mechanisms** — If the same logic must be exposed via REST, gRPC, CLI, and message queue, Clean Architecture's port abstraction shines
-3. **High test coverage required** — `@SpringBootTest` is slow; pure unit testing requires Mockito mocks of repositories
-4. **Framework migration** — Switching from Spring Boot to Quarkus or Micronaut is harder when `@Autowired`, `@Entity`, and `@Transactional` pervade the codebase
+1. **Business rules kompleks** — Jika services tumbuh hingga 500+ baris dengan kondisi bersarang, extract domain services atau gunakan DDD aggregates
+2. **Multiple delivery mechanisms** — Jika logic yang sama harus diekspos via REST, gRPC, CLI, dan message queue, port abstraction Clean Architecture unggul
+3. **Cakupan test tinggi diperlukan** — `@SpringBootTest` lambat; unit testing murni memerlukan Mockito mocks dari repositories
+4. **Framework migration** — Beralih dari Spring Boot ke Quarkus atau Micronaut lebih sulit ketika `@Autowired`, `@Entity`, dan `@Transactional` meresap di seluruh codebase
 
-## Layered Architecture vs. Clean Architecture: A Comparison
+## Layered Architecture vs. Clean Architecture: Perbandingan
 
-| Aspect | Layered Architecture (Java) | Clean Architecture (Rust) |
+| Aspek | Layered Architecture (Java) | Clean Architecture (Rust) |
 |--------|----------------------------|---------------------------|
-| **Framework coupling** | Entities know JPA; Services know Spring | Domain knows nothing |
-| **Test speed** | Needs Spring context or Mockito | Pure unit tests, microseconds |
-| **Repository impl** | Auto-generated by Spring Data | Hand-written with SQLx macros |
-| **Transaction mgmt** | `@Transactional` AOP proxy | Manual or `sqlx::Transaction` |
-| **Boilerplate** | Low — framework handles wiring | High — traits, DTOs, mappers |
-| **Compiler enforcement** | None — convention-based | Absolute — orphan rules + visibility |
-| **Team onboarding** | Fast — standard Spring knowledge | Slow — requires Rust + architecture training |
-| **Flexibility** | Medium — tied to Spring ecosystem | High — swappable everything |
-| **Best for** | CRUD-heavy, standard enterprise apps | High-performance, complex domain logic |
+| **Framework coupling** | Entities tahu JPA; Services tahu Spring | Domain tidak tahu apa-apa |
+| **Test speed** | Perlu Spring context atau Mockito | Pure unit tests, microseconds |
+| **Repository impl** | Auto-generated oleh Spring Data | Hand-written dengan SQLx macros |
+| **Transaction mgmt** | AOP proxy `@Transactional` | Manual atau `sqlx::Transaction` |
+| **Boilerplate** | Rendah — framework menangani wiring | Tinggi — traits, DTOs, mappers |
+| **Compiler enforcement** | Tidak ada — berbasis konvensi | Absolut — orphan rules + visibility |
+| **Team onboarding** | Cepat — pengetahuan Spring standar | Lambat — perlu Rust + pelatihan Architecture |
+| **Flexibilitas** | Sedang — terikat ekosistem Spring | Tinggi — semua bisa ditukar |
+| **Terbaik untuk** | Aplikasi enterprise CRUD-heavy standar | Domain logic kompleks berkinerja tinggi |
 
-## Yomu's Rationale: Why Not Clean Architecture in Java?
+## Rasional Yomu: Mengapa Bukan Clean Architecture di Java?
 
-Yomu Java handles:
-- **Auth** — JWT generation, password hashing, OAuth flow (mostly framework calls)
-- **CRUD** — Articles, quizzes, comments, users (straightforward persistence)
-- **Outbox** — Event writing and scheduling (transactional but not algorithmically complex)
+Yomu Java menangani:
+- **Auth** — JWT generation, password hashing, OAuth flow (mayoritas panggilan framework)
+- **CRUD** — Artikel, kuis, comments, users (persistence straightforward)
+- **Outbox** — Penulisan event dan scheduling (transactional tetapi tidak kompleks secara algoritmik)
 
-These domains **don't benefit** from the strict boundaries of Clean Architecture:
+Domain ini **tidak mendapatkan manfaat** dari batasan ketat Clean Architecture:
 
-- No complex calculation engine (that's Rust's job)
-- No multiple delivery mechanisms (just REST + outbox scheduler)
-- No need to swap databases (PostgreSQL is sufficient)
-- Team knows Spring Boot conventions
+- Tidak ada complex calculation engine (itu tugas Rust)
+- Tidak ada multiple delivery mechanisms (hanya REST + outbox scheduler)
+- Tidak perlu mengganti database (PostgreSQL sudah cukup)
+- Tim sudah tahu konvensi Spring Boot
 
-**The cost** of Clean Architecture in Java (duplicate models, mapping layers, fighting Spring) **outweighs the benefit** for Yomu's Java domain.
+**Biaya** Clean Architecture di Java (duplicate models, mapping layers, melawan Spring) **melebihi manfaatnya** untuk domain Java Yomu.
 
-## The "Pragmatic Layered" Approach
+## Pendekatan "Pragmatic Layered"
 
-Yomu Java isn't pure Layered Architecture — it has **pragmatic boundaries**:
+Yomu Java bukan Layered Architecture murni — ia memiliki **batasan pragmatis**:
 
 ```
 src/main/java/com/yomu/
@@ -412,13 +412,13 @@ src/main/java/com/yomu/
     └── exception/       # Global exception handlers
 ```
 
-**Notable deviations from pure Layered Architecture:**
-- **Security package** spans all layers (JWT logic is cross-cutting)
-- **Integration package** is a separate layer for external calls
-- **Common package** houses shared utilities (ApiResponse, exception handling)
-- **DTOs per feature** rather than a global DTO layer
+**Penyimpangan notable dari Layered Architecture murni:**
+- **Security package** membentang semua layer (JWT logic bersifat cross-cutting)
+- **Integration package** adalah layer terpisah untuk panggilan eksternal
+- **Common package** menampung utilitas bersama (ApiResponse, exception handling)
+- **DTOs per feature** daripada global DTO layer
 
-## Further Reading
+## Bacaan Lebih Lanjut
 
 - [Spring Boot Documentation — Layered Architecture](https://docs.spring.io/spring-boot/docs/current/reference/htmlsingle/#using.structuring-your-code)
 - [Martin Fowler — Patterns of Enterprise Application Architecture](https://martinfowler.com/books/eaa.html) — Transaction Script vs. Domain Model

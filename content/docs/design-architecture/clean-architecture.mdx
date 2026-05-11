@@ -1,42 +1,42 @@
 ---
 title: Clean Architecture
-description: Theoretical foundation, layer boundaries, and why Rust is uniquely suited for Clean Architecture — with Yomu-specific implementation details
+description: Fondasi teoritis, batasan layer, dan mengapa Rust sangat cocok untuk Clean Architecture — dengan detail implementasi spesifik Yomu
 ---
 
 # Clean Architecture
 
-Clean Architecture is a software design philosophy introduced by **Robert C. Martin (Uncle Bob)** that structures code into concentric layers, with a single inviolable rule: **dependencies always point inward**.
+Clean Architecture adalah filosofi desain perangkat lunak yang diperkenalkan oleh **Robert C. Martin (Uncle Bob)** yang menyusun kode dalam lapisan konsentris, dengan satu aturan yang tidak dapat dilanggar: **dependensi selalu mengarah ke dalam**.
 
-## The Core Philosophy
+## Filosofi Inti
 
-At its heart, Clean Architecture is a formalization of the **Dependency Inversion Principle** (the "D" in SOLID). It states that high-level policy (business rules) should never depend on low-level detail (frameworks, databases, UI). Instead, both should depend on abstractions.
+Pada intinya, Clean Architecture adalah formalisasi dari **Prinsip Dependency Inversion** ("D" dalam SOLID). Prinsip ini menyatakan bahwa kebijakan tingkat tinggi (aturan bisnis) tidak boleh bergantung pada detail tingkat rendah (framework, database, UI). Sebaliknya, keduanya harus bergantung pada abstraksi.
 
-### The Concentric Circles
+### Lingkaran Konsentris
 
-Imagine four concentric circles. The innermost circle is the most abstract; the outermost is the most concrete.
+Bayangkan empat lingkaran konsentris. Lingkaran paling dalam adalah yang paling abstrak; lingkaran paling luar adalah yang paling konkret.
 
 ```mermaid
 graph TD
-    subgraph OUTER["🔷 Presentation Layer — Frameworks & Delivery Mechanisms"]
+    subgraph OUTER["🔷 Presentation Layer — Framework & Mekanisme Pengiriman"]
         P1[Axum Controllers]
         P2[gRPC Handlers]
         P3[HTTP Middleware]
         P4[OpenAPI Annotated Routes]
     end
-    subgraph APP["🟢 Application Layer — Use Cases & Business Orchestration"]
+    subgraph APP["🟢 Application Layer — Use Case & Orkestrasi Bisnis"]
         A1[Use Case / Interactor]
         A2[Request DTOs]
         A3[Response DTOs]
         A4[Application Service]
     end
-    subgraph DOM["🔴 Domain Layer — Entities, Rules, & Invariants"]
+    subgraph DOM["🔴 Domain Layer — Entity, Aturan, & Invarian"]
         D1[Entity: Clan, Achievement, ShadowUser]
         D2[Value Object: ClanName, Score, Points]
         D3[Port: ClanRepository trait]
         D4[Port: MissionRepository trait]
         D5[Domain Error: thiserror enum]
     end
-    subgraph INF["🟡 Infrastructure Layer — Adapters & Technical Detail"]
+    subgraph INF["🟡 Infrastructure Layer — Adaptor & Detail Teknis"]
         I1[PostgreSQL Clan Repo]
         I2[Redis Leaderboard Adapter]
         I3[Reqwest HTTP Client]
@@ -58,39 +58,39 @@ graph TD
     style INF fill:#fef9c3,stroke:#eab308,stroke-width:2px,color:#713f12
 ```
 
-### The Dependency Rule (Inviolable)
+### Aturan Dependensi (Tidak Dapat Dilanggar)
 
-> **Nothing in an inner circle can know anything at all about something in an outer circle.**
+> **Tidak ada yang berada di lingkaran dalam yang boleh mengetahui apa pun tentang sesuatu di lingkaran luar.**
 
-This means:
+Artinya:
 
-| Direction | Allowed? | Example |
+| Arah | Diperbolehkan? | Contoh |
 |-----------|----------|---------|
-| Domain → Application | ✅ Yes | Entity used by use case |
-| Domain → Infrastructure | ❌ **Never** | Entity cannot import `sqlx` |
-| Application → Presentation | ❌ **Never** | Use case cannot import `axum` |
-| Infrastructure → Domain | ✅ Yes | PostgreSQL repo implements `ClanRepository` trait |
-| Presentation → Infrastructure | ❌ **Never** | Controller cannot create `PgPool` directly |
+| Domain → Application | ✅ Ya | Entity digunakan oleh use case |
+| Domain → Infrastructure | ❌ **Tidak Pernah** | Entity tidak boleh mengimpor `sqlx` |
+| Application → Presentation | ❌ **Tidak Pernah** | Use case tidak boleh mengimpor `axum` |
+| Infrastructure → Domain | ✅ Ya | PostgreSQL repo mengimplementasikan trait `ClanRepository` |
+| Presentation → Infrastructure | ❌ **Tidak Pernah** | Controller tidak boleh membuat `PgPool` secara langsung |
 
-## The Four Layers in Yomu Rust
+## Empat Layer di Yomu Rust
 
-### 1. Domain Layer — The "Why"
+### 1. Domain Layer — "Mengapa"
 
-The Domain layer contains **what the business is and does**. It is the heart of the system and has **zero external dependencies** beyond `std`, `uuid`, and `thiserror`.
+Domain layer berisi **apa itu bisnis dan apa yang dilakukannya**. Ini adalah jantung sistem dan memiliki **nol dependensi eksternal** selain `std`, `uuid`, dan `thiserror`.
 
-**Contents:**
-- **Entities** — Objects with identity that persist over time (`Clan`, `Achievement`, `ShadowUser`)
-- **Value Objects** — Immutable, validated, equatable by attributes (`ClanName`, `Score`, `Points`)
-- **Repository Ports** — Async traits defining "what" operations exist, not "how" (`ClanRepository`, `AchievementRepository`)
-- **Domain Errors** — Business-specific errors using `thiserror` (`DomainError::AlreadyExists`, `DomainError::InvalidScore`)
+**Isi:**
+- **Entity** — Objek dengan identitas yang bertahan sepanjang waktu (`Clan`, `Achievement`, `ShadowUser`)
+- **Value Object** — Immutable, tervalidasi, dapat dibandingkan berdasarkan atribut (`ClanName`, `Score`, `Points`)
+- **Port Repository** — Trait async yang mendefinisikan operasi "apa" yang ada, bukan "bagaimana" (`ClanRepository`, `AchievementRepository`)
+- **Domain Error** — Error spesifik bisnis menggunakan `thiserror` (`DomainError::AlreadyExists`, `DomainError::InvalidScore`)
 
-**Why zero dependencies?** Because business rules should outlive frameworks. If Axum dies in 10 years, the rules for how clans are created should remain exactly the same. The domain layer encodes **tacit business knowledge** that is expensive to rediscover.
+**Mengapa nol dependensi?** Karena aturan bisnis harus bertahan lebih lama dari framework. Jika Axum mati dalam 10 tahun, aturan tentang bagaimana clan dibuat harus tetap persis sama. Domain layer menyandikan **pengetahuan bisnis tacit** yang mahal untuk ditemukan kembali.
 
 ```rust
 // domain/entities/clan.rs
 pub struct Clan {
     id: Uuid,
-    name: ClanName,           // Value Object — validated at creation
+    name: ClanName,           // Value Object — divalidasi saat pembuatan
     description: Option<String>,
     leader_id: Uuid,
     created_at: DateTime<Utc>,
@@ -112,16 +112,16 @@ impl Clan {
 }
 ```
 
-### 2. Application Layer — The "How"
+### 2. Application Layer — "Bagaimana"
 
-The Application layer contains **use cases** — specific business operations that orchestrate domain objects to accomplish a user goal.
+Application layer berisi **use case** — operasi bisnis spesifik yang mengorkestrasi objek domain untuk mencapai tujuan pengguna.
 
-**Contents:**
-- **Use Cases / Interactors** — One class/struct per business operation (`CreateClanUseCase`, `SyncQuizGamificationUseCase`)
-- **DTOs** — Request/response objects for use case boundaries
-- **Application Services** — Cross-cutting orchestration (transaction management, event publishing)
+**Isi:**
+- **Use Case / Interactor** — Satu class/struct per operasi bisnis (`CreateClanUseCase`, `SyncQuizGamificationUseCase`)
+- **DTO** — Objek request/response untuk batasan use case
+- **Application Service** — Orkestrasi lintas-sektor (manajemen transaction, event publishing)
 
-**Key characteristic:** Application layer depends ONLY on Domain layer. It knows about `Clan` and `ClanRepository`, but not about `sqlx::PgPool` or `axum::extract::State`.
+**Karakteristik utama:** Application layer HANYA bergantung pada Domain layer. Ia mengetahui tentang `Clan` dan `ClanRepository`, tetapi tidak tentang `sqlx::PgPool` atau `axum::extract::State`.
 
 ```rust
 // application/use_cases/create_clan.rs
@@ -132,18 +132,18 @@ pub struct CreateClanUseCaseImpl<R: ClanRepository> {
 #[async_trait]
 impl<R: ClanRepository + Send + Sync> CreateClanUseCase for CreateClanUseCaseImpl<R> {
     async fn execute(&self, request: CreateClanRequest) -> Result<Clan, DomainError> {
-        // 1. Validate input (domain logic)
+        // 1. Validasi input (logika domain)
         let name = ClanName::new(request.name)?;
 
-        // 2. Check business rule (domain logic)
+        // 2. Periksa aturan bisnis (logika domain)
         if self.repository.find_by_name(&name.0).await?.is_some() {
             return Err(DomainError::AlreadyExists("Clan name".to_string()));
         }
 
-        // 3. Create entity (domain logic)
+        // 3. Buat entity (logika domain)
         let clan = Clan::new(name, request.description, request.created_by_user_id);
 
-        // 4. Persist via port (abstraction, not concrete DB)
+        // 4. Simpan melalui port (abstraksi, bukan DB konkret)
         self.repository.create(&clan).await?;
 
         Ok(clan)
@@ -151,28 +151,28 @@ impl<R: ClanRepository + Send + Sync> CreateClanUseCase for CreateClanUseCaseImp
 }
 ```
 
-Notice the use case:
-- Depends on `ClanRepository` **trait**, not `ClanPostgresRepo`
-- Returns `DomainError`, not `sqlx::Error`
-- Contains validation, uniqueness checks, and entity creation
-- Has **zero** HTTP, SQL, or framework code
+Perhatikan bahwa use case:
+- Bergantung pada **trait** `ClanRepository`, bukan `ClanPostgresRepo`
+- Mengembalikan `DomainError`, bukan `sqlx::Error`
+- Berisi validasi, pemeriksaan keunikan, dan pembuatan entity
+- Memiliki **nol** kode HTTP, SQL, atau framework
 
-### 3. Infrastructure Layer — The "With What"
+### 3. Infrastructure Layer — "Dengan Apa"
 
-The Infrastructure layer contains **adapters** that implement the Ports (traits) defined by Domain.
+Infrastructure layer berisi **adaptor** yang mengimplementasikan Port (trait) yang didefinisikan oleh Domain.
 
-**Contents:**
-- **PostgreSQL Repositories** — `ClanPostgresRepo` implements `ClanRepository`
-- **Redis Adapters** — `RedisLeaderboardAdapter` implements leaderboard traits
-- **HTTP Clients** — `ReqwestJavaClient` calls Java APIs
-- **Mappers** — Transform database rows to domain entities and vice versa
+**Isi:**
+- **PostgreSQL Repository** — `ClanPostgresRepo` mengimplementasikan `ClanRepository`
+- **Redis Adapter** — `RedisLeaderboardAdapter` mengimplementasikan trait leaderboard
+- **HTTP Client** — `ReqwestJavaClient` memanggil API Java
+- **Mapper** — Mentransformasi baris database menjadi entity domain dan sebaliknya
 
-**Key characteristic:** Infrastructure depends on Domain. It knows about entities and traits, but entities know nothing about it.
+**Karakteristik utama:** Infrastructure bergantung pada Domain. Ia mengetahui tentang entity dan trait, tetapi entity tidak tahu apa-apa tentangnya.
 
 ```rust
 // infrastructure/persistence/postgres/clan_repository.rs
 pub struct ClanPostgresRepo {
-    pool: PgPool,  // sqlx — concrete, framework-specific
+    pool: PgPool,  // sqlx — konkret, spesifik framework
 }
 
 #[async_trait]
@@ -196,23 +196,23 @@ impl ClanRepository for ClanPostgresRepo {
 }
 ```
 
-The adapter:
-- Implements the **trait** defined by Domain
-- Uses `sqlx`, `tokio`, and `PgPool` — all framework-specific
-- Maps `sqlx::Error` to `DomainError` before crossing the boundary
-- Has **no knowledge** of HTTP or use cases
+Adaptor ini:
+- Mengimplementasikan **trait** yang didefinisikan oleh Domain
+- Menggunakan `sqlx`, `tokio`, dan `PgPool` — semuanya spesifik framework
+- Memetakan `sqlx::Error` ke `DomainError` sebelum melewati batasan
+- **Tidak mengetahui** apa pun tentang HTTP atau use case
 
-### 4. Presentation Layer — The "How It's Delivered"
+### 4. Presentation Layer — "Bagaimana Disampaikan"
 
-The Presentation layer contains **delivery mechanisms** that convert external requests into use case invocations.
+Presentation layer berisi **mekanisme pengiriman** yang mengonversi request eksternal menjadi pemanggilan use case.
 
-**Contents:**
-- **Axum Controllers** — Handle HTTP requests, extract parameters, return JSON
-- **gRPC Handlers** — Handle protobuf messages
+**Isi:**
+- **Axum Controller** — Menangani HTTP request, mengekstrak parameter, mengembalikan JSON
+- **gRPC Handler** — Menangani pesan protobuf
 - **Middleware** — Authentication, logging, tracing, rate limiting
-- **OpenAPI Specs** — Annotated route definitions for `utoipa`
+- **Spesifikasi OpenAPI** — Definisi route teranotasi untuk `utoipa`
 
-**Key characteristic:** Presentation depends on Application. It calls use cases, but doesn't know how they work.
+**Karakteristik utama:** Presentation bergantung pada Application. Ia memanggil use case, tetapi tidak tahu bagaimana cara kerjanya.
 
 ```rust
 // presentation/api/v1/clans.rs
@@ -225,31 +225,31 @@ pub async fn create_clan(
 }
 ```
 
-The controller:
-- Receives HTTP request with JSON body
-- Delegates to use case via injected dependency
-- Maps domain response to HTTP response
-- Has **zero business logic** — only HTTP plumbing
+Controller ini:
+- Menerima HTTP request dengan body JSON
+- Mendelegasikan ke use case melalui dependensi yang diinjeksi
+- Memetakan response domain ke HTTP response
+- Memiliki **nol logika bisnis** — hanya plumbing HTTP
 
-## Why Clean Architecture for Yomu Rust?
+## Mengapa Clean Architecture untuk Yomu Rust?
 
-### 1. The Compiler as Architecture Enforcer
+### 1. Compiler sebagai Penegak Architecture
 
-In languages without strict type systems, Clean Architecture is a **convention** — developers can violate it accidentally. In Rust, it's a **law**:
+Dalam bahasa tanpa sistem tipe yang ketat, Clean Architecture hanyalah sebuah **konvensi** — pengembang dapat melanggarnya secara tidak sengaja. Di Rust, ini adalah **hukum**:
 
 ```rust
-// This will NOT compile if domain tries to use sqlx
+// Ini TIDAK akan kompilasi jika domain mencoba menggunakan sqlx
 error[E0432]: import `sqlx` is not visible here
   --> domain/entities/clan.rs:1:10
    |
-1  | use sqlx::prelude::*;  // ERROR: database dependency in domain
+1  | use sqlx::prelude::*;  // ERROR: dependensi database di domain
 ```
 
-Rust's visibility system (`pub(crate)`, module boundaries) and orphan rules make it physically impossible for domain code to import infrastructure crates. The architecture is **mechanically enforced**.
+Sistem visibilitas Rust (`pub(crate)`, batasan modul) dan aturan orphan membuat domain secara fisik tidak mungkin mengimpor crate infrastructure. Architecture ini **ditegakkan secara mekanis**.
 
-### 2. Testability Without Infrastructure
+### 2. Testabilitas Tanpa Infrastruktur
 
-Domain and application layers can be tested with **zero** database, network, or async runtime:
+Domain dan application layer dapat diuji dengan **nol** database, jaringan, atau async runtime:
 
 ```rust
 #[test]
@@ -262,50 +262,50 @@ fn test_create_clan_success() {
     let result = use_case.execute(create_request()).unwrap();
 
     assert_eq!(result.name().0, "Test Clan");
-    // Test completes in microseconds — no DB setup
+    // Test selesai dalam mikrodetik — tanpa setup DB
 }
 ```
 
-### 3. Framework Independence
+### 3. Independensi Framework
 
-Rust's Clean Architecture means:
-- **Axum** is replaceable — swap with Actix-web, Warp, or a CLI tool
-- **SQLx** is replaceable — swap with Diesel, SeaORM, or an in-memory store for testing
-- **PostgreSQL** is replaceable — swap with SQLite, MySQL, or a flat file
-- **Redis** is replaceable — swap with Memcached, or an in-memory HashMap for local dev
+Clean Architecture di Rust berarti:
+- **Axum** dapat diganti — tukar dengan Actix-web, Warp, atau CLI tool
+- **SQLx** dapat diganti — tukar dengan Diesel, SeaORM, atau in-memory store untuk testing
+- **PostgreSQL** dapat diganti — tukar dengan SQLite, MySQL, atau flat file
+- **Redis** dapat diganti — tukar dengan Memcached, atau HashMap in-memory untuk dev lokal
 
-### 4. Team Scaling
+### 4. Skalabilitas Tim
 
-With strict boundaries:
-- **Domain experts** work on `domain/` without knowing HTTP or SQL
-- **Infrastructure specialists** optimize queries in `infrastructure/` without touching business rules
-- **API designers** define DTOs in `application/` and routes in `presentation/`
-- Teams can work independently with minimal merge conflicts
+Dengan batasan yang ketat:
+- **Ahli domain** bekerja di `domain/` tanpa perlu tahu HTTP atau SQL
+- **Spesialis infrastructure** mengoptimalkan query di `infrastructure/` tanpa menyentuh aturan bisnis
+- **Desainer API** mendefinisikan DTO di `application/` dan route di `presentation/`
+- Tim dapat bekerja secara independen dengan konflik merge minimal
 
-## Trade-offs of Clean Architecture
+## Trade-off Clean Architecture
 
-| Benefit | Cost |
+| Manfaat | Biaya |
 |---------|------|
-| Testable domain logic without DB | More files per feature (trait + impl + use case + controller) |
-| Swappable infrastructure | Boilerplate for DTO mapping |
-| Compiler-enforced boundaries | Verbose generic type parameters (`impl<R: ClanRepository>`) |
-| Framework independence | Learning curve for junior developers |
-| Team autonomy | Repository pattern adds indirection |
+| Logika domain dapat diuji tanpa DB | Lebih banyak file per fitur (trait + impl + use case + controller) |
+| Infrastructure dapat ditukar | Boilerplate untuk mapping DTO |
+| Batasan ditegakkan oleh compiler | Parameter tipe generik yang verbose (`impl<R: ClanRepository>`) |
+| Independensi framework | Kurva pembelajaran untuk pengembang junior |
+| Otonomi tim | Repository pattern menambah indireksi |
 
-## Clean Architecture vs. Hexagonal Architecture
+## Clean Architecture vs. Architecture Heksagonal
 
-**Hexagonal Architecture** (Alistair Cockburn) and **Clean Architecture** (Robert C. Martin) are **synonymous** in practice:
+**Architecture Heksagonal** (Alistair Cockburn) dan **Clean Architecture** (Robert C. Martin) pada praktiknya **sinonim**:
 
-| Term | Origin | Metaphor |
+| Istilah | Asal | Metafora |
 |------|--------|----------|
-| Clean Architecture | Uncle Bob | Concentric circles |
-| Hexagonal Architecture | Alistair Cockburn | Hexagon with ports and adapters |
-| Ports & Adapters | Both | Interfaces = Ports, Implementations = Adapters |
-| Onion Architecture | Jeffrey Palermo | Layers like an onion |
+| Clean Architecture | Uncle Bob | Lingkaran konsentris |
+| Architecture Heksagonal | Alistair Cockburn | Heksagon dengan port dan adaptor |
+| Ports & Adapters | Keduanya | Interface = Port, Implementasi = Adaptor |
+| Onion Architecture | Jeffrey Palermo | Lapisan seperti bawang |
 
-All describe the same principle: **domain in the center, dependencies point inward**.
+Semuanya mendeskripsikan prinsip yang sama: **domain di tengah, dependensi mengarah ke dalam**.
 
-## Yomu's Layered File Structure
+## Struktur File Berlapis Yomu
 
 ```
 src/modules/league/
@@ -334,7 +334,7 @@ src/modules/league/
 ├── infrastructure/
 │   ├── persistence/
 │   │   ├── postgres/
-│   │   │   ├── clan_repository.rs    # Adapter (impl)
+│   │   │   ├── clan_repository.rs    # Adaptor (impl)
 │   │   │   └── mod.rs
 │   │   └── mod.rs
 │   ├── cache/
@@ -350,7 +350,7 @@ src/modules/league/
             └── mod.rs
 ```
 
-## The Dependency Flow
+## Alur Dependensi
 
 ```mermaid
 sequenceDiagram
@@ -376,9 +376,9 @@ sequenceDiagram
     Pres-->>Client: 201 Created + JSON
 ```
 
-## Further Reading
+## Bacaan Lebih Lanjut
 
 - [The Clean Architecture — Robert C. Martin](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html)
 - [Hexagonal Architecture — Alistair Cockburn](https://alistair.cockburn.us/hexagonal-architecture/)
 - [Implementing Domain-Driven Design — Vaughn Vernon](https://www.oreilly.com/library/view/implementing-domain-driven-design/9780133039900/)
-- [Rust for Rustaceans — Jon Gjengset](https://rust-for-rustaceans.com/) — for advanced ownership patterns in layered architectures
+- [Rust for Rustaceans — Jon Gjengset](https://rust-for-rustaceans.com/) — untuk pattern kepemilikan lanjutan dalam Layered Architecture

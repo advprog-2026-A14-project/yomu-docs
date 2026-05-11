@@ -1,25 +1,25 @@
 ---
-title: League Module
-description: Clan management and tiered leaderboards driven by Redis sorted sets
+title: Modul League
+description: Manajemen klan dan papan peringkat bertingkat yang digerakkan oleh Redis sorted sets
 ---
 
 <Callout type="info">
-The League module manages clan lifecycle, membership, scoring, and tiered leaderboards. It uses Redis sorted sets for high-performance leaderboard queries and PostgreSQL for persistent data.
+Modul League mengelola siklus hidup klan, keanggotaan, penilaian, dan papan peringkat bertingkat. Ia menggunakan Redis sorted sets untuk kueri papan peringkat berkinerja tinggi dan PostgreSQL untuk data persisten.
 </Callout>
 
-## Bounded Context
+## Konteks Terbatas
 
-The module owns:
+Modul ini memiliki:
 
-- Clan creation and configuration
-- Clan membership lifecycle (join, leave, promote, remove)
-- Score updates and tier progression
-- Leaderboard queries by tier and global rank
+- Pembuatan dan konfigurasi klan
+- Siklus hidup keanggotaan klan (bergabung, keluar, naikkan jabatan, hapus)
+- Pembaruan skor dan progresi tingkat (tier)
+- Kueri papan peringkat berdasarkan tingkat dan peringkat global
 
-## Entities
+## Entitas
 
 ```rust
-// Clan entity with tier
+// Entitas Clan dengan tingkat (tier)
 pub struct Clan {
     pub id: Uuid,
     pub name: String,
@@ -29,7 +29,7 @@ pub struct Clan {
     pub created_at: DateTime<Utc>,
 }
 
-// Clan membership
+// Keanggotaan klan
 pub struct ClanMember {
     pub clan_id: Uuid,
     pub user_id: Uuid,
@@ -37,10 +37,10 @@ pub struct ClanMember {
     pub joined_at: DateTime<Utc>,
 }
 
-// Score value object (domain invariant: score >= 0)
+// Value object Score (invarian domain: score >= 0)
 pub struct Score(pub i64);
 
-// Tier enum
+// Enum tingkat
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum ClanTier {
     Bronze,
@@ -50,7 +50,7 @@ pub enum ClanTier {
 }
 ```
 
-## Repository Trait
+## Trait Repositori
 
 ```rust
 #[async_trait]
@@ -63,27 +63,27 @@ pub trait ClanRepository: Send + Sync {
 }
 ```
 
-## Use Cases
+## Use Case
 
 <Cards>
 <Card title="CreateClanUseCase">
-Creates a new clan with tier-based initial score. Validates clan name uniqueness and user availability.
+Membuat klan baru dengan skor awal berdasarkan tingkat. Memvalidasi keunikan nama klan dan ketersediaan pengguna.
 </Card>
 <Card title="JoinClanUseCase">
-Handles clan joining with role assignment. Checks for maximum clan size and user eligibility.
+Menangani bergabungnya klan dengan penetapan peran. Memeriksa ukuran klan maksimum dan kelayakan pengguna.
 </Card>
 <Card title="GetClanDetailUseCase">
-Returns clan info with paginated members and leaderboard position.
+Mengembalikan info klan dengan anggota terpaginasi dan posisi papan peringkat.
 </Card>
 <Card title="GetLeaderboardUseCase">
-Fetches top clans from Redis leaderboard sorted sets by tier or global.
+Mengambil klan teratas dari Redis leaderboard sorted sets berdasarkan tingkat atau global.
 </Card>
 <Card title="GetUserTierUseCase">
-Calculates and returns user's tier based on their clan's score.
+Menghitung dan mengembalikan tingkat pengguna berdasarkan skor klan mereka.
 </Card>
 </Cards>
 
-## Execution Flow: Create Clan
+## Alur Eksekusi: Buat Klan
 
 <Diagram name="CreateClanSequence">
 ```mermaid
@@ -91,7 +91,7 @@ sequenceDiagram
     participant Frontend
     participant Controller
     participant CreateClanUseCase
-    repository as ClanRepository
+    participant ClanRepository as repository
     participant PostgreSQL
     participant Redis
 
@@ -99,7 +99,7 @@ sequenceDiagram
     Controller->>CreateClanUseCase: Execute(CreateClanRequest)
     CreateClanUseCase->>repository: find_clan_by_name(name)
     repository->>PostgreSQL: SELECT
-    PostgreSQL-->>repository: None (new clan)
+    PostgreSQL-->>repository: None (klan baru)
     
     CreateClanUseCase->>repository: create(clan)
     repository->>PostgreSQL: INSERT INTO clans
@@ -117,7 +117,7 @@ sequenceDiagram
 ```
 </Diagram>
 
-## Execution Flow: Get Leaderboard
+## Alur Eksekusi: Dapatkan Papan Peringkat
 
 <Diagram name="LeaderboardSequence">
 ```mermaid
@@ -135,32 +135,32 @@ sequenceDiagram
     GetLeaderboardUseCase->>Redis: MULTI
     GetLeaderboardUseCase->>Redis: HGET clan:clan_id_1 name
     GetLeaderboardUseCase->>Redis: HGET clan:clan_id_1 description
-    Redis-->>GetLeaderboardUseCase: [name, desc]
+    Redis-->>GetLeaderboardUseCase: [nama, deskripsi]
     
     Redis->>GetLeaderboardUseCase: EXEC
-    GetLeaderboardUseCase-->>Controller: LeaderboardResponse (clans array)
+    GetLeaderboardUseCase-->>Controller: LeaderboardResponse (array clans)
     Controller-->>Frontend: 200 OK
 ```
 </Diagram>
 
-## Redis Schema
+## Skema Redis
 
-Sorted sets maintain real-time leaderboards:
+Sorted sets mempertahankan papan peringkat real-time:
 
-| Key | Purpose | Operations |
+| Kunci | Tujuan | Operasi |
 |-----|---------|------------|
-| `leaderboard:Bronze` | Bronze tier leaderboard | ZADD, ZINCRBY, ZREVRANGE |
-| `leaderboard:Silver` | Silver tier leaderboard | ZADD, ZINCRBY, ZREVRANGE |
-| `leaderboard:Gold` | Gold tier leaderboard | ZADD, ZINCRBY, ZREVRANGE |
-| `leaderboard:Diamond` | Diamond tier leaderboard | ZADD, ZINCRBY, ZREVRANGE |
-| `leaderboard:global` | Combined global rank | ZADD, ZINCRBY, ZREVRANGE |
+| `leaderboard:Bronze` | Papan peringkat tingkat Bronze | ZADD, ZINCRBY, ZREVRANGE |
+| `leaderboard:Silver` | Papan peringkat tingkat Silver | ZADD, ZINCRBY, ZREVRANGE |
+| `leaderboard:Gold` | Papan peringkat tingkat Gold | ZADD, ZINCRBY, ZREVRANGE |
+| `leaderboard:Diamond` | Papan peringkat tingkat Diamond | ZADD, ZINCRBY, ZREVRANGE |
+| `leaderboard:global` | Peringkat global gabungan | ZADD, ZINCRBY, ZREVRANGE |
 
-## Score Update Pattern
+## pattern Pembaruan Skor
 
-When a QuizResult fires:
+Ketika QuizResult dipicu:
 
 ```rust
-// ZINCRBY updates score atomically
+// ZINCRBY memperbarui skor secara atomik
 redis::cmd("ZINCRBY")
     .arg("leaderboard:Gold")
     .arg(clan_delta)
@@ -169,56 +169,56 @@ redis::cmd("ZINCRBY")
     .await?;
 ```
 
-## Endpoints
+## Endpoint
 
 <Steps>
 <Step title="POST /api/v1/clans">
-Create a new clan.
+Membuat klan baru.
 
 ```json
 {
   "name": "The Code Warriors",
-  "description": "We solve problems with code",
+  "description": "Kami menyelesaikan masalah dengan kode",
   "tier": "Gold"
 }
 ```
 
-Response: `201 Created` with `ClanResponse`
+Respons: `201 Created` dengan `ClanResponse`
 </Step>
 <Step title="GET /api/v1/clans/:id">
-Fetch clan detail with members and leaderboard position.
+Mengambil detail klan dengan anggota dan posisi papan peringkat.
 
-Response: `200 OK` with `ClanDetailResponse`
+Respons: `200 OK` dengan `ClanDetailResponse`
 </Step>
 <Step title="POST /api/v1/clans/:id/join">
-Join a clan. Requires valid JWT and clan capacity check.
+Bergabung dengan klan. Memerlukan JWT valid dan pemeriksaan kapasitas klan.
 
-Response: `200 OK` / `400` (already in clan) / `404` (clan not found)
+Respons: `200 OK` / `400` (sudah dalam klan) / `404` (klan tidak ditemukan)
 </Step>
 <Step title="GET /api/v1/leaderboards">
-Get top clans by tier.
+Mendapatkan klan teratas berdasarkan tingkat.
 
-Query params: `tier=Silver&limit=10`
+Parameter kueri: `tier=Silver&limit=10`
 
-Response: `200 OK` with `{ clans: [{id, name, score, rank}] }`
+Respons: `200 OK` dengan `{ clans: [{id, name, score, rank}] }`
 </Step>
 <Step title="GET /api/v1/users/:user_id/tier">
-Get user's tier info via their clan.
+Mendapatkan info tingkat pengguna melalui klan mereka.
 
-Response: `200 OK` with `{ user_id, clan_id, tier, score }`
+Respons: `200 OK` dengan `{ user_id, clan_id, tier, score }`
 </Step>
 </Steps>
 
-## Validation Rules
+## Aturan Validasi
 
-- Clan name: 3-30 chars, alphanumeric + underscores only
-- Description: max 255 chars
-- Max members per clan: 50
-- Score delta must be ≥ 0
-- Tier transitions: Bronze→Silver→Gold→Diamond (forward-only)
+- Nama klan: 3-30 karakter, hanya alfanumerik + garis bawah
+- Deskripsi: maks 255 karakter
+- Maks anggota per klan: 50
+- Delta skor harus ≥ 0
+- Transisi tingkat: Bronze→Silver→Gold→Diamond (hanya maju)
 
-## Testing
+## Pengujian
 
-- Unit tests: domain entities and use cases (mockall mocks)
-- Integration tests: full stack with test database
-- Redis mocking: `mockall::Mock` for Redis commands
+- Unit test: entitas domain dan use case (mock mockall)
+- Integration test: full stack dengan database uji
+- Mocking Redis: `mockall::Mock` untuk perintah Redis

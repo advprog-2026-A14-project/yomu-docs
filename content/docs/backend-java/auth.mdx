@@ -1,21 +1,21 @@
 ---
-title: Authentication
-description: JWT-based authentication with local login, registration, and Google OAuth
+title: Autentikasi
+description: Autentikasi berbasis JWT dengan login lokal, registrasi, dan Google OAuth
 ---
 
 
-The auth module provides three authentication flows: local registration/login and Google OAuth SSO. All flows return JWT access tokens signed with HMAC-SHA256. The module includes identifier resolution, username generation for SSO users, and automatic sync to the Rust engine via outbox pattern.
+Modul auth menyediakan tiga alur autentikasi: registrasi/login lokal dan Google OAuth SSO. Semua alur mengembalikan token akses JWT yang ditandatangani dengan HMAC-SHA256. Modul ini mencakup resolusi identifier, pembuatan username untuk pengguna SSO, dan sinkronisasi otomatis ke engine Rust melalui pattern outbox.
 
-## AuthController Endpoints
+## Endpoint AuthController
 
-| Endpoint | Method | Request Body | Description |
+| Endpoint | Method | Request Body | Keterangan |
 |----------|--------|--------------|-------------|
-| `/api/v1/auth/register` | POST | `RegisterRequest` | Register new local user |
-| `/api/v1/auth/login` | POST | `LoginRequest` | Login with identifier and password |
-| `/api/v1/auth/google` | POST | `GoogleLoginRequest` | Google SSO login |
+| `/api/v1/auth/register` | POST | `RegisterRequest` | Mendaftarkan pengguna lokal baru |
+| `/api/v1/auth/login` | POST | `LoginRequest` | Login dengan identifier dan password |
+| `/api/v1/auth/google` | POST | `GoogleLoginRequest` | Login Google SSO |
 
 <Callout type="info">
-The `/api/v1/auth/google` endpoint requires a valid Google ID token (id_token) issued within the last hour. Google accounts without password can only use SSO login.
+Endpoint `/api/v1/auth/google` memerlukan Google ID token (id_token) yang valid dan diterbitkan dalam satu jam terakhir. Akun Google tanpa password hanya dapat menggunakan login SSO.
 </Callout>
 
 ### Request DTOs
@@ -23,19 +23,19 @@ The `/api/v1/auth/google` endpoint requires a valid Google ID token (id_token) i
 **RegisterRequest**
 ```typescript
 {
-  username: string,               // alphanumeric, unique
-  display_name: string,           // required, visible name
-  password: string,               // min 8 chars, hashed with BCrypt
-  email?: string,                 // unique, optional if phone_number present
-  phone_number?: string           // unique, optional if email present
+  username: string,               // alfanumerik, unik
+  display_name: string,           // wajib, nama yang ditampilkan
+  password: string,               // min 8 karakter, di-hash dengan BCrypt
+  email?: string,                 // unik, opsional jika phone_number ada
+  phone_number?: string           // unik, opsional jika email ada
 }
 ```
 
 **LoginRequest**
 ```typescript
 {
-  identifier: string,             // email@domain, +62xxx, or username
-  password: string                // hashed with BCrypt
+  identifier: string,             // email@domain, +62xxx, atau username
+  password: string                // di-hash dengan BCrypt
 }
 ```
 
@@ -43,14 +43,14 @@ The `/api/v1/auth/google` endpoint requires a valid Google ID token (id_token) i
 ```typescript
 {
   id_token: string,               // Google ID token
-  username?: string,              // optional override for username
-  display_name?: string           // optional override for display name
+  username?: string,              // override opsional untuk username
+  display_name?: string           // override opsional untuk display name
 }
 ```
 
-## AuthService Business Logic
+## Logika Bisnis AuthService
 
-### Register Flow with Rust Sync
+### Alur Register dengan Sinkronisasi Rust
 
 ```mermaid
 sequenceDiagram
@@ -74,24 +74,24 @@ sequenceDiagram
     AuthService->>AuthService: generate JWT token
     AuthService->>AES: syncNewUser(userId)
     
-    Note over AES,RS: Attempt 1
+    Note over AES,RS: Percobaan 1
     AES->>RS: POST /api/internal/users/sync
-    alt Sync Successful
+    alt Sinkronisasi Berhasil
         RS-->>AES: 201/200
-        AES-->>AuthService: Sync successful
-    else Sync Failed (down/retryable error)
+        AES-->>AuthService: Sinkronisasi berhasil
+    else Sinkronisasi Gagal (down/retryable error)
         AES->>OS: recordUserSyncFailure(userId)
         OS-->>AES: saved FailedSyncEvent
-        AES-->>AuthService: Sync failed, recorded
+        AES-->>AuthService: Sinkronisasi gagal, tercatat
     end
     
     AuthService-->>AuthController: ApiResponse<AuthResponseData>
-    AuthController-->>Client: 200 OK + JWT + user data
+    AuthController-->>Client: 200 OK + JWT + data pengguna
 ```
 
 ## IdentifierResolver
 
-The `IdentifierResolver` class detects the type of login identifier:
+Kelas `IdentifierResolver` mendeteksi jenis identifier login:
 
 ```java
 public ResolvedIdentifier resolve(String identifier) {
@@ -105,95 +105,95 @@ public ResolvedIdentifier resolve(String identifier) {
 }
 ```
 
-Supported types:
-- **EMAIL**: Contains `@` symbol
-- **PHONE_NUMBER**: Starts with `+` or contains only digits
-- **USERNAME**: Default fallback
+Jenis yang didukung:
+- **EMAIL**: Mengandung simbol `@`
+- **PHONE_NUMBER**: Diawali `+` atau hanya berisi digit
+- **USERNAME**: Fallback default
 
 ## UsernameGenerator
 
-Generates username for Google OAuth users from email address:
-- Extracts local part before `@`
-- Sanitizes: lowercases, replaces invalid chars with `_`, compact duplicates
-- Falls back to `google_user` if empty or conflicts
-- Checks existing usernames and appends suffix if needed
+Menghasilkan username untuk pengguna Google OAuth dari alamat email:
+- Mengekstrak bagian lokal sebelum `@`
+- Membersihkan: mengubah ke huruf kecil, mengganti karakter tidak valid dengan `_`, memadatkan duplikat
+- Fallback ke `google_user` jika kosong atau terjadi konflik
+- Memeriksa username yang sudah ada dan menambahkan sufiks jika diperlukan
 
 ```mermaid
 flowchart TD
-    Start[Start] --> CheckEmail{Email present?}
-    CheckEmail -->|Yes| ExtractLocal[Extract local part]
-    CheckEmail -->|No| UseDefault[Use default 'google_user']
+    Start[Mulai] --> CheckEmail{Email tersedia?}
+    CheckEmail -->|Ya| ExtractLocal[Ekstrak bagian lokal]
+    CheckEmail -->|Tidak| UseDefault[Gunakan default 'google_user']
     
-    ExtractLocal --> Sanitize[Lowercase, sanitize]
-    Sanitize --> Compact[Compact multiple _]
-    Compact --> CheckEmpty{Empty after sanitize?}
-    CheckEmpty -->|Yes| UseDefault
+    ExtractLocal --> Sanitize[Lowercase, sanitasi]
+    Sanitize --> Compact[Padatkan multiple _]
+    Compact --> CheckEmpty{Kosong setelah sanitasi?}
+    CheckEmpty -->|Ya| UseDefault
     
-    CheckEmpty -->|No| CheckConflict{Username exists?}
-    CheckConflict -->|Yes| AppendSuffix[Append _N suffix]
-    CheckConflict -->|No| ReturnResult[Return username]
+    CheckEmpty -->|Tidak| CheckConflict{Username sudah ada?}
+    CheckConflict -->|Ya| AppendSuffix[Tambahkan sufiks _N]
+    CheckConflict -->|Tidak| ReturnResult[Kembalikan username]
     AppendSuffix --> CheckConflict
     
     UseDefault --> ReturnResult
-    ReturnResult --> End[End]
+    ReturnResult --> End[Selesai]
 ```
 
 ## GoogleIdTokenVerifier
 
-Interface for validating Google ID tokens:
-- **GoogleIdTokenVerifier**: Interface with `verify(idToken)` method
-- **RestGoogleIdTokenVerifier**: REST implementation using Google OAuth API
+Interface untuk memvalidasi Google ID token:
+- **GoogleIdTokenVerifier**: Interface dengan metode `verify(idToken)`
+- **RestGoogleIdTokenVerifier**: Implementasi REST menggunakan Google OAuth API
 
-Verifies:
-1. Token signature using Google's public keys
-2. Token not expired (typically 1 hour)
-3. Audience matches your app's client ID
+Memverifikasi:
+1. Tanda tangan token menggunakan kunci publik Google
+2. Token belum kedaluwarsa (biasanya 1 jam)
+3. Audience cocok dengan client ID aplikasi Anda
 
 ## AuthUserSyncService
 
-Handles synchronization to Rust engine:
-- **Max retry**: Configurable via `auth.user-sync.retry.max-attempts` (default: 2)
-- **Sync on**: Successful user creation (`register` or `googleLogin`)
-- **Behavior**: Immediate sync with fallback to outbox on failure
-- **Retry strategy**: Synchronous attempts up to maxAttempts
+Menangani sinkronisasi ke engine Rust:
+- **Max retry**: Dapat dikonfigurasi melalui `auth.user-sync.retry.max-attempts` (default: 2)
+- **Sync on**: Pembuatan pengguna yang berhasil (`register` atau `googleLogin`)
+- **Perilaku**: Sinkronisasi langsung dengan fallback ke outbox jika gagal
+- **Strategi retry**: Percobaan sinkronis hingga maxAttempts
 
-If all attempts fail, the service records a failed sync event with:
+Jika semua percobaan gagal, layanan mencatat failed sync event dengan:
 - `event_type`: `USER_SYNC`
 - `payload_json`: `{"user_id": "uuid"}`
 - `status`: `FAILED`
 - `retry_count`: `0`
 
-## JWT Token Structure
+## Struktur Token JWT
 
 ```json
 {
-  "sub": "user_id_uuid",          // User's UUID
-  "role": "PELAJAR|ADMIN",        // User role enum
-  "iat": 1715000000,              // Issued at (epoch)
-  "exp": 1715086400               // Expiration (epoch)
+  "sub": "user_id_uuid",          // UUID Pengguna
+  "role": "PELAJAR|ADMIN",        // Role enum pengguna
+  "iat": 1715000000,              // Diterbitkan pada (epoch)
+  "exp": 1715086400               // Kedaluwarsa (epoch)
 }
 ```
 
-Token configuration:
+Konfigurasi token:
 - **Algorithm**: HS256 (HMAC-SHA256)
-- **Secret**: From config (min 32 characters)
-- **TTL**: Configurable via `jwt.ttl-seconds`
+- **Secret**: Dari config (min 32 karakter)
+- **TTL**: Dapat dikonfigurasi melalui `jwt.ttl-seconds`
 
-## BCrypt Password Hashing
+## Hashing Password BCrypt
 
 - **Encoder**: `BCryptPasswordEncoder`
 - **Strength**: Default (10 rounds)
-- **SSO-only users**: `password_hash` set to `null`
-- **Cannot login**: SSO users without password
+- **Pengguna SSO-only**: `password_hash` diatur ke `null`
+- **Tidak dapat login**: Pengguna SSO tanpa password
 
 <Callout type="warning">
-SSO-only users (Google OAuth only) cannot login via local `/api/v1/auth/login` — they must use Google login even if they have a username.
+Pengguna SSO-only (Google OAuth saja) tidak dapat login melalui `/api/v1/auth/login` lokal — mereka harus menggunakan login Google meskipun memiliki username.
 </Callout>
 
 ## Soft Delete
 
-Users are never hard-deleted from the database:
-- `deleted_at` is `NULL` for active users
-- `deleted_at` contains `Instant` for soft-deleted users
-- All queries filter by `deleted_at IS NULL` for active lookups
-- Google OAuth users can be soft-deleted but not permanently removed
+Pengguna tidak pernah di-hard-delete dari database:
+- `deleted_at` bernilai `NULL` untuk pengguna aktif
+- `deleted_at` berisi `Instant` untuk pengguna yang di-soft-delete
+- Semua query memfilter dengan `deleted_at IS NULL` untuk pencarian aktif
+- Pengguna Google OAuth dapat di-soft-delete tetapi tidak dapat dihapus secara permanen

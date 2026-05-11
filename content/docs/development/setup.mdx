@@ -1,14 +1,14 @@
 ---
-title: Development Setup
-description: Step-by-step setup for local development with Docker Compose
+title: Setup Pengembangan
+description: Panduan langkah demi langkah untuk pengembangan lokal dengan Docker Compose
 ---
 
 
-## Prerequisites
+## Prasyarat
 
-Install these before proceeding:
+Install ini sebelum melanjutkan:
 
-| Tool | Command | Check |
+| Tool | Command | Cek |
 |------|---------|-------|
 | Java 21 | `brew install openjdk@21` | `java -version` |
 | Rust 1.85+ | `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \| sh` | `rustc --version` |
@@ -20,11 +20,11 @@ Install these before proceeding:
 
 ## Environment Variables
 
-Each service requires specific environment variables.
+Setiap service memerlukan environment variables spesifik.
 
 ### Java Backend (yomu-backend-java)
 
-Create `.env` in `yomu-backend-java/`:
+Buat `.env` di `yomu-backend-java/`:
 
 ```bash
 # Database (Docker Compose)
@@ -42,7 +42,7 @@ GOOGLE_OAUTH_CLIENT_SECRET=your-client-secret
 
 ### Rust Backend (yomu-backend-rust)
 
-Create `.env` in `yomu-backend-rust/`:
+Buat `.env` di `yomu-backend-rust/`:
 
 ```bash
 # Database
@@ -61,7 +61,7 @@ RUST_LOG=info
 
 ### Frontend (yomu-frontend)
 
-Create `.env.local` in `yomu-frontend/`:
+Buat `.env.local` di `yomu-frontend/`:
 
 ```bash
 # API URLs
@@ -78,12 +78,12 @@ NEXT_PUBLIC_DEBUG=true
 
 ---
 
-## Step-by-Step Setup
+## Setup Langkah demi Langkah
 
-### Step 1: Clone and Install Dependencies
+### Langkah 1: Clone dan Install Dependencies
 
 ```bash
-# Clone repository (if not already done)
+# Clone repository (jika belum dilakukan)
 # git clone https://github.com/yourorg/yomu.git
 
 # Java backend
@@ -99,9 +99,9 @@ cd ../yomu-frontend
 bun install
 ```
 
-### Step 2: Start Infrastructure (PostgreSQL + Redis)
+### Langkah 2: Mulai Infrastructure (PostgreSQL + Redis)
 
-All three services share the same Docker Compose infrastructure.
+Ketiga service menggunakan infrastruktur Docker Compose yang sama.
 
 ```bash
 cd yomu-backend-rust
@@ -109,13 +109,13 @@ docker compose -f docker-compose.dev.yml build
 docker compose -f docker-compose.dev.yml up -d
 ```
 
-Verify containers are running:
+Verifikasi container berjalan:
 
 ```bash
 docker compose -f docker-compose.dev.yml ps
 ```
 
-Expected output:
+Output yang diharapkan:
 
 ```
 Name                    Command               State           Ports
@@ -124,7 +124,7 @@ yomu-postgres   docker-entrypoint.sh postgres   Up      0.0.0.0:5432->5432/tcp
 yomu-redis      redis-server --appendonly ...   Up      0.0.0.0:6379->6379/tcp
 ```
 
-Wait 5-10 seconds for PostgreSQL to be ready, then verify connectivity:
+Tunggu 5-10 detik agar PostgreSQL siap, lalu verifikasi konektivitas:
 
 ```bash
 # Test PostgreSQL
@@ -134,7 +134,7 @@ psql -h localhost -U yomu_user -d yomu_local -c "SELECT 1"
 redis-cli -h localhost ping
 ```
 
-### Step 3: Run Rust Migrations
+### Langkah 3: Jalankan Rust Migrations
 
 ```bash
 cd yomu-backend-rust
@@ -142,26 +142,26 @@ cargo sqlx database create
 cargo sqlx migrate run
 ```
 
-Verify:
+Verifikasi:
 
 ```bash
 cargo sqlx migrate status
 ```
 
-### Step 4: Start Java Backend
+### Langkah 4: Mulai Java Backend
 
 ```bash
 cd yomu-backend-java
 ./gradlew bootRun
 ```
 
-Expected output:
+Output yang diharapkan:
 
 ```
 Started Application in X.XXX seconds
 ```
 
-Verify:
+Verifikasi:
 
 ```bash
 curl http://localhost:8080/health
@@ -173,20 +173,20 @@ Expected response:
 {"success":true,"message":"OK","data":{"status":"UP"}}
 ```
 
-### Step 5: Start Rust Backend
+### Langkah 5: Mulai Rust Backend
 
 ```bash
 cd yomu-backend-rust
 cargo run
 ```
 
-Expected output:
+Output yang diharapkan:
 
 ```
 Listening on http://0.0.0.0:8081
 ```
 
-Verify:
+Verifikasi:
 
 ```bash
 curl http://localhost:8081/health
@@ -198,36 +198,36 @@ Expected response:
 {"success":true,"message":"OK","data":{}}
 ```
 
-### Step 6: Start Frontend
+### Langkah 6: Mulai Frontend
 
 ```bash
 cd yomu-frontend
 bun run dev
 ```
 
-Expected output:
+Output yang diharapkan:
 
 ```
 Local:   http://localhost:3000
 ```
 
-Verify: Open `http://localhost:3000` in your browser.
+Verifikasi: Buka `http://localhost:3000` di browser.
 
 ---
 
 ## Docker Compose Quick Start
 
-Run all services with a single command:
+Jalankan semua service dengan satu perintah:
 
 ```bash
-# Build all images
+# Build semua images
 cd yomu-backend-rust
 docker compose -f docker-compose.dev.yml build
 
-# Start all services
+# Mulai semua services
 docker compose -f docker-compose.dev.yml up -d
 
-# View logs
+# Lihat logs
 docker compose -f docker-compose.dev.yml logs -f
 ```
 
@@ -240,13 +240,13 @@ docker compose -f docker-compose.dev.yml logs -f
 ```bash
 cd yomu-backend-java
 
-# Run all tests
+# Jalankan semua tests
 ./gradlew test
 
-# Run specific test class
+# Jalankan test class spesifik
 ./gradlew test --tests "yomu.auth.AuthenticationControllerTest"
 
-# Run with coverage
+# Jalankan dengan coverage
 ./gradlew test jacocoTestReport
 ```
 
@@ -255,16 +255,16 @@ cd yomu-backend-java
 ```bash
 cd yomu-backend-rust
 
-# Run all tests
+# Jalankan semua tests
 cargo test
 
-# Run specific module tests
+# Jalankan test module spesifik
 cargo test --package gamification --lib modules::gamification::tests
 
-# Run with coverage (requires grcov)
+# Jalankan dengan coverage (memerlukan grcov)
 cargo tarpaulin
 
-# Run nextest (slower but parallel)
+# Jalankan nextest (lebih lambat tapi parallel)
 cargo nextest run
 ```
 
@@ -273,85 +273,85 @@ cargo nextest run
 ```bash
 cd yomu-frontend
 
-# Build for production
+# Build untuk produksi
 bun run build
 
-# Run type check
+# Jalankan type check
 bun run typecheck
 
-# Run lint (ESLint)
+# Jalankan lint (ESLint)
 bun run lint
 ```
 
 ---
 
-## Common Issues and Fixes
+## Masalah Umum dan Perbaikan
 
-### Issue 1: Port Already in Use
+### Masalah 1: Port Sudah Digunakan
 
 ```
 Error: Cannot start service java: Bind failed for port 8080
 ```
 
-**Fix:**
+**Perbaikan:**
 
 ```bash
-# Find process using port 8080
+# Temukan proses yang menggunakan port 8080
 lsof -i :8080
 
-# Kill it
+# Hentikan
 kill -9 <PID>
 
-# Or change the port in docker-compose.dev.yml
+# Atau ubah port di docker-compose.dev.yml
 ```
 
-### Issue 2: Rust SQLx Migration Error
+### Masalah 2: Error Migrasi SQLx Rust
 
 ```
 error: configuration file not found
 ```
 
-**Fix:**
+**Perbaikan:**
 
 ```bash
-# Ensure .sqlx/config.json exists
+# Pastikan .sqlx/config.json ada
 cd yomu-backend-rust
 cargo sqlx migrate setup
 ```
 
-### Issue 3: Frontend Cannot Connect to BFF
+### Masalah 3: Frontend Tidak Bisa Terhubung ke BFF
 
 ```
 Error: Network error while fetching /api/v1/...
 ```
 
-**Fix:**
+**Perbaikan:**
 
 ```bash
-# Ensure NEXT_PUBLIC_* variables are set correctly in .env.local
-# Restart frontend after .env changes
+# Pastikan variabel NEXT_PUBLIC_* sudah diatur dengan benar di .env.local
+# Restart frontend setelah perubahan .env
 bun run dev
 ```
 
-### Issue 4: PostgreSQL Connection Refused
+### Masalah 4: Koneksi PostgreSQL Ditolak
 
 ```
 ERROR: database "yomu_local" is not accepting connections
 ```
 
-**Fix:**
+**Perbaikan:**
 
 ```bash
-# Wait for PostgreSQL to be ready
+# Tunggu PostgreSQL siap
 sleep 10
 
-# Or check PostgreSQL logs
+# Atau periksa logs PostgreSQL
 docker compose -f docker-compose.dev.yml logs postgres
 ```
 
 ---
 
-## Full Local Development Setup Diagram
+## Diagram Setup Pengembangan Lokal Lengkap
 
 ```mermaid
 graph TD
@@ -362,7 +362,7 @@ graph TD
     subgraph "Next.js (yomu-frontend)"
         B -->|API Routes| C[Java API Handler]
         B -->|API Routes| D[Rust API Handler]
-        B -->|Static Files| E[/public]
+        B -->|Static Files| E["/public"]
     end
 
     subgraph "Java Backend (yomu-backend-java:8080)"
@@ -379,8 +379,8 @@ graph TD
     end
 
     subgraph "Infrastructure (Docker)"
-        F -->|Volume| J[/var/lib/postgresql/data]
-        I -->|Volume| K[/data/redis]
+        F -->|Volume| J["/var/lib/postgresql/data"]
+        I -->|Volume| K["/data/redis"]
     end
 ```
 
@@ -388,24 +388,24 @@ graph TD
 
 ## Development Cheat Sheet
 
-| Task | Command |
+| Tugas | Command |
 |------|---------|
-| Start all services | `cd yomu-backend-rust && docker compose -f docker-compose.dev.yml up -d` |
-| Start Java backend | `cd yomu-backend-java && ./gradlew bootRun` |
-| Start Rust backend | `cd yomu-backend-rust && cargo run` |
-| Start frontend | `cd yomu-frontend && bun run dev` |
-| Run Java tests | `cd yomu-backend-java && ./gradlew test` |
-| Run Rust tests | `cd yomu-backend-rust && cargo test` |
+| Mulai semua services | `cd yomu-backend-rust && docker compose -f docker-compose.dev.yml up -d` |
+| Mulai Java backend | `cd yomu-backend-java && ./gradlew bootRun` |
+| Mulai Rust backend | `cd yomu-backend-rust && cargo run` |
+| Mulai frontend | `cd yomu-frontend && bun run dev` |
+| Jalankan Java tests | `cd yomu-backend-java && ./gradlew test` |
+| Jalankan Rust tests | `cd yomu-backend-rust && cargo test` |
 | Format Rust | `cd yomu-backend-rust && cargo fmt` |
 | Lint Rust | `cd yomu-backend-rust && cargo clippy` |
 | Build frontend | `cd yomu-frontend && bun run build` |
 
 ---
 
-## Next Steps
+## Langkah Selanjutnya
 
-After setup is complete:
+Setelah setup selesai:
 
-1. [Design Decisions](/docs/design-decisions) — Learn about architecture and technology choices
-2. [Development Guide](/docs/development) — Overview of local development
-3. [API Reference](/docs/api) — Detailed API endpoints (coming soon)
+1. [Keputusan Desain](/docs/design-decisions) — Pelajari tentang Architecture dan pilihan teknologi
+2. [Panduan Pengembangan](/docs/development) — Gambaran umum pengembangan lokal
+3. [API Reference](/docs/api) — Endpoint API detail (segera hadir)

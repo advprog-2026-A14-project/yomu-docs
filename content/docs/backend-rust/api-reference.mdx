@@ -1,26 +1,26 @@
 ---
-title: API Reference
-description: Complete OpenAPI specification for Rust backend endpoints
+title: Referensi API
+description: Spesifikasi OpenAPI lengkap untuk endpoint backend Rust
 ---
 
-## Overview
+## Gambaran Umum
 
-The Rust backend exposes two API surface areas:
+Backend Rust menyediakan dua area permukaan API:
 
-1. **Public API** (`/api/v1/*`) — Authenticationenticated endpoints for gamification features
-2. **Internal API** (`/api/internal/*`) — Java synchronization endpoints with API key auth
+1. **Public API** (`/api/v1/*`) — Endpoint terotentikasi untuk fitur gamifikasi
+2. **Internal API** (`/api/internal/*`) — Endpoint sinkronisasi Java dengan otentikasi API key
 
 ## Public API: /api/v1
 
 <Cards>
-<Card title="Clans">
-POST/GET clans, join, leaderboard queries
+<Card title="Klan">
+POST/GET klan, gabung, kueri papan peringkat
 </Card>
-<Card title="Missions">
-GET daily missions, POST claim reward
+<Card title="Misi">
+GET misi harian, POST klaim hadiah
 </Card>
-<Card title="Achievements">
-GET user achievements and progress
+<Card title="Pencapaian">
+GET pencapaian dan progres pengguna
 </Card>
 </Cards>
 
@@ -28,24 +28,24 @@ GET user achievements and progress
 
 <Cards>
 <Card title="User Sync">
-POST /users/sync — Idempotent shadow user creation
+POST /users/sync — Pembuatan shadow user idempoten
 </Card>
 <Card title="Quiz Sync">
-POST /quiz-history/sync — Quiz result sync with gamification trigger
+POST /quiz-history/sync — Sinkronisasi hasil kuis dengan trigger gamifikasi
 </Card>
 </Cards>
 
-## Authentication
+## Autentikasi
 
-| Endpoint | Auth Type | Token Source |
+| Endpoint | Jenis Auth | Sumber Token |
 |----------|-----------|--------------|
 | `/api/v1/*` | Bearer (JWT) | `Authorization: Bearer <token>` |
 | `/api/internal/*` | API Key | `X-API-Key: <secret>` |
-| gRPC | mTLS (optional) | Certificate auth |
+| gRPC | mTLS (opsional) | Auth sertifikat |
 
-## Response Format
+## Format Respons
 
-Consistent wrapper across all endpoints:
+Wrapper konsisten di semua endpoint:
 
 ```json
 {
@@ -55,7 +55,7 @@ Consistent wrapper across all endpoints:
 }
 ```
 
-Error responses:
+Respons error:
 
 ```json
 {
@@ -67,9 +67,9 @@ Error responses:
 
 ## Rate Limiting
 
-- Public API: 100 requests/minute per user
-- Internal API: 500 requests/minute per API key
+- Public API: 100 request/menit per pengguna
+- Internal API: 500 request/menit per API key
 
-## OpenAPI Spec
+## Spesifikasi OpenAPI
 
-Available at: `http://localhost:8081/api-docs/openapi.json`
+Tersedia di: `http://localhost:8081/api-docs/openapi.json`

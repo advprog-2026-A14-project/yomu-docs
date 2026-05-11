@@ -1,51 +1,51 @@
 ---
-title: UI Components
-description: shadcn/ui component library and custom components
+title: Komponen UI
+description: Pustaka komponen shadcn/ui dan komponen kustom
 ---
 
-# UI Components
+# Komponen UI
 
-The frontend uses shadcn/ui (new-york style) as its primary component library, augmented with custom components for domain-specific functionality.
+Frontend menggunakan shadcn/ui (gaya new-york) sebagai pustaka komponen utama, dilengkapi dengan komponen kustom untuk fungsionalitas spesifik domain.
 
-## shadcn/ui Component Library
+## Pustaka Komponen shadcn/ui
 
-55+ pre-built, accessible components installed with the new-york design system:
+55+ komponen siap pakai yang aksesibel, diinstal dengan sistem desain new-york:
 
-### Form Elements
+### Elemen Formulir
 
 - `Button`, `Input`, `Textarea`, `Select`, `Switch`, `Checkbox`, `RadioGroup`, `Slider`, `Form`, `Label`, `FormField`
 
-### Layout
+### Tata Letak
 
 - `Card`, `Tabs`, ` Accordion`, `Collapsible`, `Dialog`, `Sheet`, `Popover`, `Tooltip`
 
-### Navigation
+### Navigasi
 
 - `Navbar`, `Sidebar`, `Breadcrumb`, `Link`, `Menubar`
 
-### Feedback
+### Umpan Balik
 
-- `Toast`, `Alert`, `Alert Dialog`, `Sonner` (notifications)
+- `Toast`, `Alert`, `Alert Dialog`, `Sonner` (notifikasi)
 
-### Data Display
+### Tampilan Data
 
 - `Table`, `Badge`, `Avatar`, `Progress`, `Skeleton`, `Carousel`, `Calendar`
 
-### Overlays
+### Overlay
 
 - `Modal`, `Drawer`, `Hover Card`, `Menu`
 
-All components use:
-- Lucide icons via `lucide-react`
-- Tailwind v4 with CSS variables
-- Dark mode support
-- `cn()` utility for class composition
+Semua komponen menggunakan:
+- Ikon Lucide via `lucide-react`
+- Tailwind v4 dengan CSS variables
+- Dukungan dark mode
+- Utilitas `cn()` untuk komposisi class
 
-## Custom Components
+## Komponen Kustom
 
 ### GoogleLoginButton
 
-Google One Tap login integration:
+Integrasi login Google One Tap:
 
 ```typescript
 'use client';
@@ -67,42 +67,42 @@ export function GoogleLoginButton() {
 
 ### ReadingCatalog
 
-Article browser with categorization:
+Browser artikel dengan kategorisasi:
 
-- **Features**: Filter by category, search, pagination
-- **Data**: Mock data structure with `id`, `title`, `author`, `category`
-- **Interaction**: Click to navigate to `/bacaankuis/[id]`
+- **Fitur**: Filter berdasarkan kategori, pencarian, paginasi
+- **Data**: Struktur data mock dengan `id`, `title`, `author`, `category`
+- **Interaksi**: Klik untuk navigasi ke `/bacaankuis/[id]`
 
 ### ReadingQuizExperience
 
-Quiz interface for reading completion:
+Antarmuka kuis untuk penyelesaian bacaan:
 
-- **Progress bar**: Visual completion indicator
-- **Sticky action bar**: Submit button always visible
-- **Question navigation**: Jump between questions
-- **Submit handling**: Final submission with validation
+- **Progress bar**: Indikator penyelesaian visual
+- **Sticky action bar**: Tombol submit selalu terlihat
+- **Navigasi pertanyaan**: Lompat antar pertanyaan
+- **Penanganan submit**: Pengiriman akhir dengan validasi
 
 ### CommentForm
 
-Comment submission component:
+Komponen pengiriman komentar:
 
-- **Fields**: Content textarea, anonymous toggle
-- **Validation**: Zod schema validation
-- **Submitting**: Disabled state during submit
+- **Field**: Textarea konten, toggle anonim
+- **Validasi**: Validasi skema Zod
+- **Submitting**: Status disabled selama submit
 
 ### CommentList
 
-Recursive comment threading with social features:
+Threading komentar rekursif dengan fitur sosial:
 
-- **Tier badges**: Level-based user hierarchy
-- **Clan display**: Clan tag and badge per comment
-- **Reply forms**: Nested comment composition
-- **Reaction toggles**: Like/dislike interaction
-- **Delete button**: User-initiated removal
+- **Lencana tier**: Hierarki pengguna berbasis level
+- **Tampilan klan**: Tag klan dan lencana per komentar
+- **Formulir balasan**: Komposisi komentar bersarang
+- **Toggle reaksi**: Interaksi like/dislike
+- **Tombol hapus**: Penghapusan yang diinisiasi pengguna
 
-## Form Handling
+## Penanganan Formulir
 
-All forms use React Hook Form with Zod validation:
+Semua formulir menggunakan React Hook Form dengan validasi Zod:
 
 ```typescript
 import { z } from 'zod';
@@ -123,7 +123,7 @@ function LoginForm() {
   });
 
   function onSubmit(data: LoginForm) {
-    // Submit to /api/v1/auth/login
+    // Submit ke /api/v1/auth/login
   }
 
   return (
@@ -141,15 +141,15 @@ function LoginForm() {
 }
 ```
 
-## Styling System
+## Sistem Styling
 
-**Tailwind v4 features**:
-- CSS variables for design token management
-- `@layer base, components, utilities` directives
-- `dark:` prefix for dark mode variants
-- OKLCH colors for accessible color palettes
+**Fitur Tailwind v4**:
+- CSS variables untuk manajemen design token
+- Direktif `@layer base, components, utilities`
+- Prefix `dark:` untuk varian dark mode
+- Warna OKLCH untuk palet warna yang aksesibel
 
-**Configuration**:
+**Konfigurasi**:
 ```css
 @import 'tailwindcss';
 
@@ -166,27 +166,27 @@ function LoginForm() {
 }
 ```
 
-## Empty Stubs and Anti-Patterns
+## Stub Kosong dan Anti-pattern
 
-### Empty Dashboard Pages
+### Halaman Dashboard Kosong
 
-The following routes are placeholders and need implementation:
+Rute berikut adalah placeholder dan perlu diimplementasikan:
 
-- `/dashboard/clans` — Clan management
-- `/dashboard/missions` — Mission tracking
-- `/dashboard/achievements` — Achievement showcase
-- `/dashboard/leaderboard` — Leaderboard display
+- `/dashboard/clans` — Manajemen klan
+- `/dashboard/missions` — Pelacakan misi
+- `/dashboard/achievements` — Pameran pencapaian
+- `/dashboard/leaderboard` — Tampilan leaderboard
 
-### Feature Action Stubs
+### Stub Action Fitur
 
-Empty action modules requiring implementation:
+Modul action kosong yang memerlukan implementasi:
 
 - `src/features/league/actions.ts`
 - `src/features/gamification/actions.ts`
 - `src/features/auth/actions.ts`
 
-### Anti-Patterns
+### Anti-pattern
 
-**Direct fetch from test-java**: Page at `/app/test-java/page.tsx` makes direct `fetch('http://localhost:8080')` calls, violating BFF pattern.
+**Direct fetch dari test-java**: Halaman di `/app/test-java/page.tsx` melakukan panggilan langsung `fetch('http://localhost:8080')`, melanggar pattern BFF.
 
-**Duplicate auth routes**: Both `/app/auth/` and `/app/(auth)/` directories exist, creating route duplication.
+**Rute auth duplikat**: Direktori `/app/auth/` dan `/app/(auth)/` keduanya ada, menciptakan duplikasi rute.

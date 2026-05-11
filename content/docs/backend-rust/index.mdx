@@ -1,58 +1,58 @@
 ---
-title: Rust Backend
-description: Axum-based gamification engine — clans, leaderboards, achievements, missions, and user synchronization
+title: Backend Rust
+description: Mesin gamifikasi berbasis Axum — klan, papan peringkat, pencapaian, misi, dan sinkronisasi pengguna
 ---
 
 <Callout type="note">
-The Rust backend is a high-performance gamification engine built with Axum 0.8.8 and Rust 2024 Edition. It serves as the secondary backend that handles clan management, leaderboards, achievements, and missions — while maintaining shadow user data synced from the Java backend.
+Backend Rust adalah mesin gamifikasi berkinerja tinggi yang dibangun dengan Axum 0.8.8 dan Rust 2024 Edition. Ia berfungsi sebagai backend sekunder yang menangani manajemen klan, papan peringkat, pencapaian, dan misi — sambil mempertahankan data pengguna bayangan yang disinkronkan dari backend Java.
 </Callout>
 
-## Overview
+## Gambaran Umum
 
 - **Framework**: Axum 0.8.8, Tower, Tower-HTTP
-- **Rust Version**: Edition 2024, MSRV 1.85
-- **Port**: 8081 (main), 8082 (gRPC)
-- **Purpose**: High-performance gamification engine with Redis-backed leaderboards
+- **Versi Rust**: Edition 2024, MSRV 1.85
+- **Port**: 8081 (utama), 8082 (gRPC)
+- **Tujuan**: Mesin gamifikasi berkinerja tinggi dengan papan peringkat berbasis Redis
 
-## Bounded Contexts
+## Konteks Terbatas (Bounded Contexts)
 
-The Rust backend is organized into three distinct bounded contexts:
+Backend Rust diorganisir ke dalam tiga konteks terbatas yang terpisah:
 
 <Cards>
 <Card title="League" href="/docs/backend-rust/league">
-Clan lifecycle, membership management, and tiered leaderboards using Redis sorted sets.
+Siklus hidup klan, manajemen keanggotaan, dan papan peringkat bertingkat menggunakan Redis sorted sets.
 </Card>
 <Card title="Gamification" href="/docs/backend-rust/gamification">
-Achievement tracking, daily missions, reward points, and quiz completion processing.
+Pelacakan pencapaian, misi harian, poin hadiah, dan pemrosesan penyelesaian kuis.
 </Card>
 <Card title="User Sync" href="/docs/backend-rust/user-sync">
-Shadow user synchronization from Java backend via REST outbox and gRPC services.
+Sinkronisasi pengguna bayangan dari backend Java melalui REST outbox dan layanan gRPC.
 </Card>
 </Cards>
 
 ## Architecture
 
-Clean Architecture (Hexagonal/Ports and Adapters) is applied consistently per module:
+Clean Architecture (Hexagonal/Ports and Adapters) diterapkan secara konsisten per modul:
 
 <Steps>
-<Step title="Domain Layer">
-Entities, value objects, repository traits (async-trait), and domain errors (thiserror).
+<Step title="Lapisan Domain">
+Entitas, value objects, trait repositori (async-trait), dan error domain (thiserror).
 </Step>
-<Step title="Application Layer">
-DTOs, use cases, and application services that orchestrate domain logic.
+<Step title="Lapisan Aplikasi">
+DTO, use case, dan layanan aplikasi yang mengorkestrasi logika domain.
 </Step>
-<Step title="Infrastructure Layer">
-PostgreSQL, Redis clients, HTTP clients (reqwest), and external service integrations.
+<Step title="Lapisan Infrastruktur">
+PostgreSQL client, Redis client, HTTP client (reqwest), dan integrasi layanan eksternal.
 </Step>
-<Step title="Presentation Layer">
-Axum controllers, routes, gRPC handlers, and middleware setup.
+<Step title="Lapisan Presentasi">
+Kontroler Axum, rute, handler gRPC, dan pengaturan middleware.
 </Step>
 </Steps>
 
-### Module Flow
+### Alur Modul
 
 <Callout type="info">
-The three modules interact as follows:
+Ketiga modul berinteraksi sebagai berikut:
 </Callout>
 
 <Diagram name="RustBackendArchitecture">
@@ -69,46 +69,46 @@ sequenceDiagram
 
     Frontend->>Axum: /api/v1/clans (GET/POST)
     Axum->>LeagueModule: Controller → UseCase
-    LeagueModule->>PostgreSQL: Queries
+    LeagueModule->>PostgreSQL: Kueri
     LeagueModule->>Redis: ZINCRBY/ZREVRANGE
-    Redis-->>LeagueModule: Leaderboard data
+    Redis-->>LeagueModule: Data papan peringkat
 
     Frontend->>Axum: /api/v1/missions/daily
     Axum->>GamificationModule: Controller → UseCase
-    GamificationModule->>PostgreSQL: Queries
+    GamificationModule->>PostgreSQL: Kueri
 
     JavaBackend->>Axum: /api/internal/users/sync
-    Axum->>UserSyncModule: Shadow user sync
-    UserSyncModule->>PostgreSQL: INSERT (idempotent)
+    Axum->>UserSyncModule: Sinkronisasi pengguna bayangan
+    UserSyncModule->>PostgreSQL: INSERT (idempoten)
 ```
 </Diagram>
 
-## Key Dependencies
+## Dependensi Utama
 
 ```toml
 [dependencies]
-axum = "0.8.8"           # HTTP framework
-tower = "0.5.2"          # Middleware stack
-tower-http = "0.6.2"     # HTTP middleware (cors, trace, compression)
+axum = "0.8.8"           # Framework HTTP
+tower = "0.5.2"          # Stack middleware
+tower-http = "0.6.2"     # Middleware HTTP (cors, trace, compression)
 sqlx = { version = "0.8.2", features = ["postgres", "uuid", "runtime-tokio", "macros"] }
 redis = { version = "0.27.2", features = ["tokio-comp", "connection-manager"] }
-utoipa = "4.2.3"         # OpenAPI/Swagger docs
-thiserror = "2.0.6"      # Error types
+utoipa = "4.2.3"         # Dokumentasi OpenAPI/Swagger
+thiserror = "2.0.6"      # Tipe error
 tokio = { version = "1.43.0", features = ["full"] }
-async-trait = "0.1.88"   # Async traits
+async-trait = "0.1.88"   # Trait async
 prost = "0.13.2"         # Protocol Buffers (gRPC)
-tonic = "0.12.3"         # gRPC framework
+tonic = "0.12.3"         # Framework gRPC
 ```
 
-## API Structure
+## Struktur API
 
-| Prefix | Purpose | Authentication |
+| Prefiks | Tujuan | Autentikasi |
 |--------|---------|----------------|
-| `/api/v1/*` | External gamification endpoints | JWT (via middleware) |
-| `/api/internal/*` | Java synchronization endpoints | API key |
-| `/grpc/*` | gRPC services | mTLS (optional) |
+| `/api/v1/*` | Endpoint gamifikasi eksternal | JWT (via middleware) |
+| `/api/internal/*` | Endpoint sinkronisasi Java | API key |
+| `/grpc/*` | Layanan gRPC | mTLS (opsional) |
 
-## Development
+## Pengembangan
 
 ```bash
 cd yomu-backend-rust
@@ -118,48 +118,48 @@ cargo clippy --all-targets --all-features
 cargo fmt --check
 ```
 
-## Monitoring
+## Pemantauan
 
-- `/metrics` — Prometheus metrics endpoint (via `tower-http`)
-- `/_health` — Health check endpoint
-- OpenAPI spec at `/api-docs/openapi.json`
+- `/metrics` — Endpoint metrik Prometheus (via `tower-http`)
+- `/_health` — Endpoint health check
+- Spesifikasi OpenAPI di `/api-docs/openapi.json`
 
-## Related Documentation
+## Dokumentasi Terkait
 
-- [Java Backend Overview](/docs/backend-java)
-- [Frontend Integration](/docs/frontend)
+- [Gambaran Umum Backend Java](/docs/backend-java)
+- [Integrasi Frontend](/docs/frontend)
 
 ## Clean Architecture (Hexagonal / Ports & Adapters)
 
-Rust's zero-cost abstractions make it an ideal language for Clean Architecture. This section explains how we apply Hexagonal Architecture to our Axum-based backend, enforcing strict boundaries between domain logic and external concerns.
+Abstraksi zero-cost Rust menjadikannya bahasa yang ideal untuk Clean Architecture. Bagian ini menjelaskan bagaimana kami menerapkan Architecture Hexagonal pada backend berbasis Axum kami, yang memberlakukan batasan ketat antara logika domain dan kepentingan eksternal.
 
-### What is Clean Architecture?
+### Apa itu Clean Architecture?
 
-Clean Architecture is a design philosophy proposed by Robert C. Martin (Uncle Bob) that organizes code into concentric circles, with the **Dependency Rule** as its cornerstone: **dependencies must always point inward**. Inner layers know nothing about outer layers.
+Clean Architecture adalah filosofi desain yang diajukan oleh Robert C. Martin (Uncle Bob) yang mengorganisir kode ke dalam lingkaran konsentris, dengan **Aturan Dependensi (Dependency Rule)** sebagai landasannya: **dependensi harus selalu mengarah ke dalam**. Lapisan dalam tidak tahu apa-apa tentang lapisan luar.
 
 ```mermaid
 graph TD
-    subgraph OUTER["🔷 Presentation Layer (Delivery Mechanism)"]
-        P1[Axum Controllers]
-        P2[gRPC Handlers]
-        P3[Middleware / Filters]
+    subgraph OUTER["🔷 Lapisan Presentasi (Mekanisme Pengiriman)"]
+        P1[Kontroler Axum]
+        P2[Handler gRPC]
+        P3[Middleware / Filter]
     end
-    subgraph APP["🟢 Application Layer (Business Orchestration)"]
-        A1[Use Cases / Interactors]
-        A2[DTOs — Request / Response]
-        A3[Application Services]
+    subgraph APP["🟢 Lapisan Aplikasi (Orkestrasi Bisnis)"]
+        A1[Use Case / Interaktor]
+        A2[DTO — Request / Response]
+        A3[Layanan Aplikasi]
     end
-    subgraph DOM["🔴 Domain Layer (Core Business Logic)"]
-        D1[Entities & Aggregates]
+    subgraph DOM["🔴 Lapisan Domain (Logika Bisnis Inti)"]
+        D1[Entitas & Agregat]
         D2[Value Objects]
-        D3[Repository Ports — Traits]
-        D4[Domain Errors — thiserror]
+        D3[Port Repositori — Trait]
+        D4[Error Domain — thiserror]
     end
-    subgraph INF["🟡 Infrastructure Layer (Technical Detail)"]
-        I1[PostgreSQL Repositories]
-        I2[Redis Cache Adapters]
-        I3[HTTP Clients — reqwest]
-        I4[External Service Clients]
+    subgraph INF["🟡 Lapisan Infrastruktur (Detail Teknis)"]
+        I1[Repositori PostgreSQL]
+        I2[Adapter Cache Redis]
+        I3[Klien HTTP — reqwest]
+        I4[Klien Layanan Eksternal]
     end
 
     P1 --> A1
@@ -177,65 +177,65 @@ graph TD
     style INF fill:#fef9c3,stroke:#eab308,stroke-width:2px,color:#713f12
 ```
 
-**The Dependency Rule** dictates that:
-- **Domain** knows nothing about HTTP, SQL, JSON, or frameworks
-- **Application** knows about Domain, but not about Axum or PostgreSQL
-- **Infrastructure** implements the Ports (traits) defined by Domain
-- **Presentation** depends on Application to execute use cases
+**Aturan Dependensi** menetapkan bahwa:
+- **Domain** tidak tahu apa-apa tentang HTTP, SQL, JSON, atau framework
+- **Aplikasi** tahu tentang Domain, tetapi tidak tentang Axum atau PostgreSQL
+- **Infrastruktur** mengimplementasikan Port (trait) yang didefinisikan oleh Domain
+- **Presentasi** bergantung pada Aplikasi untuk mengeksekusi use case
 
-This inversion of dependencies means our business logic is **framework-agnostic**. We can replace Axum with Actix-web, SQLx with Diesel, or PostgreSQL with SQLite — without touching a single line of domain or application code.
+Pembalikan dependensi ini berarti logika bisnis kami bersifat **agnostik terhadap framework**. Kami dapat mengganti Axum dengan Actix-web, SQLx dengan Diesel, atau PostgreSQL dengan SQLite — tanpa menyentuh satu baris pun kode domain atau aplikasi.
 
-**The Dependency Rule**: Inner circles (domain) must never depend on outer circles (infrastructure/presentation). This means domain code knows nothing about HTTP, databases, or frameworks.
+**Aturan Dependensi**: Lingkaran dalam (domain) tidak boleh bergantung pada lingkaran luar (infrastruktur/presentasi). Ini berarti kode domain tidak tahu apa-apa tentang HTTP, database, atau framework.
 
-### Why Clean Architecture for Yomu Rust?
+### Mengapa Clean Architecture untuk Yomu Rust?
 
-1. **Testability**: Domain logic can be tested in isolation without a database or network
-2. **Swappable Infrastructure**: We can swap PostgreSQL for another DB or Redis for another cache without touching domain/use case code
-3. **Framework Independence**: Axum and Tonic are just delivery mechanisms — domain logic is framework-agnostic
-4. **Enforces Discipline**: The compiler enforces boundaries, preventing team members from accidentally leaking SQL into use cases
+1. **Testabilitas**: Logika domain dapat diuji secara terisolasi tanpa database atau jaringan
+2. **Infrastruktur yang Dapat Ditukar**: Kami dapat menukar PostgreSQL dengan DB lain atau Redis dengan cache lain tanpa menyentuh kode domain/use case
+3. **Independensi Framework**: Axum dan Tonic hanyalah mekanisme pengiriman — logika domain bersifat agnostik terhadap framework
+4. **Menegakkan Disiplin**: Kompiler memberlakukan batasan, mencegah anggota tim secara tidak sengaja membocorkan SQL ke dalam use case
 
 ```rust
-// BAD: Use case depend on concrete PostgreSQL types
+// BURUK: Use case bergantung pada tipe PostgreSQL konkret
 async fn create_clan(&self, name: String) -> Result<Clan, SqlxError> {
-    // This couples domain logic to a specific database implementation
+    // Ini memasangkan logika domain ke implementasi database tertentu
 }
 
-// GOOD: Use case depends on trait (Port)
+// BAIK: Use case bergantung pada trait (Port)
 async fn create_clan(&self, name: String) -> Result<Clan, DomainError> {
-    // This depends only on the domain trait, not the implementation
+    // Ini hanya bergantung pada trait domain, bukan implementasinya
 }
 ```
 
-### Our Four-Layer Implementation
+### Implementasi Empat Lapisan Kami
 
-Each bounded context (league, gamification, user_sync) follows this layered structure:
+Setiap konteks terbatas (league, gamification, user_sync) mengikuti struktur berlapis ini:
 
 <Diagram name="CleanArchitectureLayers">
 ```mermaid
 graph TD
-    subgraph "Presentation Layer"
-        A1[Axum Controllers]
-        A2[gRPC Handlers]
-        A3[Routes & Middlewares]
+    subgraph "Lapisan Presentasi"
+        A1[Kontroler Axum]
+        A2[Handler gRPC]
+        A3[Rute & Middleware]
     end
     
-    subgraph "Application Layer"
-        B1[Use Cases]
-        B2[DTOs]
-        B3[Application Services]
+    subgraph "Lapisan Aplikasi"
+        B1[Use Case]
+        B2[DTO]
+        B3[Layanan Aplikasi]
     end
     
-    subgraph "Domain Layer"
-        C1[Entities]
+    subgraph "Lapisan Domain"
+        C1[Entitas]
         C2[Value Objects]
-        C3[Repository Traits]
-        C4[Domain Errors]
+        C3[Trait Repositori]
+        C4[Error Domain]
     end
     
-    subgraph "Infrastructure Layer"
-        D1[PostgreSQL Repos]
-        D2[Redis Repos]
-        D3[HTTP Clients]
+    subgraph "Lapisan Infrastruktur"
+        D1[Repo PostgreSQL]
+        D2[Repo Redis]
+        D3[Klien HTTP]
         D4[Mappers]
     end
     
@@ -247,69 +247,69 @@ graph TD
     C3 <--> D1
     C3 <--> D2
     C3 <--> D3
-    D1 -->|depends on| C1
-    D2 -->|depends on| C1
-    D3 -->|depends on| C1
-    D4 -->|maps| C1
+    D1 -->|bergantung pada| C1
+    D2 -->|bergantung pada| C1
+    D3 -->|bergantung pada| C1
+    D4 -->|memetakan| C1
 ```
 </Diagram>
 
-#### Layer Descriptions
+#### Deskripsi Lapisan
 
-**Domain Layer** (`src/modules/league/domain/`)
-- **Entities**: `Clan`, `Achievement`, `ShadowUser` — objects with identity
-- **Value Objects**: `ClanName`, `Points`, `Badge` — immutable, validated
-- **Repository Traits**: `ClanRepository`, `AchievementRepository` — async traits defining operations
-- **Errors**: `DomainError` using `thiserror` — domain-specific errors only
+**Lapisan Domain** (`src/modules/league/domain/`)
+- **Entitas**: `Clan`, `Achievement`, `ShadowUser` — objek dengan identitas
+- **Value Objects**: `ClanName`, `Points`, `Badge` — immutable, tervalidasi
+- **Trait Repositori**: `ClanRepository`, `AchievementRepository` — trait async yang mendefinisikan operasi
+- **Error**: `DomainError` menggunakan `thiserror` — hanya error spesifik domain
 
-Key point: Domain layer has **zero external dependencies** beyond `thiserror`, `uuid`, and `std`.
+Poin kunci: Lapisan domain memiliki **nol dependensi eksternal** selain `thiserror`, `uuid`, dan `std`.
 
-**Application Layer** (`src/modules/league/application/`)
-- **DTOs**: Request/response types for use cases
-- **Use Cases**: Business logic coordination, depends ONLY on domain layer
-- **Application Services**: Cross-cutting concerns (e.g., transaction management)
+**Lapisan Aplikasi** (`src/modules/league/application/`)
+- **DTO**: Tipe request/response untuk use case
+- **Use Case**: Koordinasi logika bisnis, bergantung HANYA pada lapisan domain
+- **Layanan Aplikasi**: Kepentingan lintas sektoral (misalnya, manajemen transaksi)
 
-**Infrastructure Layer** (`src/modules/league/infrastructure/`)
-- **PostgreSQL Repos**: Implement domain repository traits using `sqlx`
-- **Redis Repos**: Implement Redis-specific traits using `redis` crate
-- **HTTP Clients**: External service integrations (Java backend, OAuth providers)
-- **Mappers**: Transform DB rows to domain entities and vice versa
+**Lapisan Infrastruktur** (`src/modules/league/infrastructure/`)
+- **Repo PostgreSQL**: Mengimplementasikan trait repositori domain menggunakan `sqlx`
+- **Repo Redis**: Mengimplementasikan trait spesifik Redis menggunakan crate `redis`
+- **Klien HTTP**: Integrasi layanan eksternal (backend Java, penyedia OAuth)
+- **Mappers**: Mengubah baris DB menjadi entitas domain dan sebaliknya
 
-**Presentation Layer** (`src/modules/league/presentation/`)
-- **Controllers**: Axum handle functions, convert HTTP to use case calls
-- **Routes**: OpenAPI-annotated route definitions
-- **Middleware**: Authentication, logging, tracing
+**Lapisan Presentasi** (`src/modules/league/presentation/`)
+- **Kontroler**: Fungsi handle Axum, mengonversi HTTP menjadi panggilan use case
+- **Rute**: Definisi rute yang dianotasi OpenAPI
+- **Middleware**: Autentikasi, logging, tracing
 
-### Ports & Adapters (Hexagonal) in Practice
+### Ports & Adapters (Hexagonal) dalam Praktik
 
-Hexagonal Architecture views the application as a core (domain) with ports (interfaces) that adapters (implementations) connect to:
+Architecture Hexagonal memandang aplikasi sebagai inti (domain) dengan port (antarmuka) yang dihubungkan oleh adapter (implementasi):
 
 <Diagram name="PortsAndAdapters">
 ```mermaid
 graph LR
-    subgraph "External World"
+    subgraph "Dunia Eksternal"
         FE[Frontend]
-        JAVA[Java Backend]
+        JAVA[Backend Java]
         PG[PostgreSQL]
         REDIS[Redis]
-        EXTERNAL[Other Services]
+        EXTERNAL[Layanan Lainnya]
     end
     
-    subgraph "Application Core"
-        DC[Domain Core]
-        UC[Use Cases]
+    subgraph "Inti Aplikasi"
+        DC[Inti Domain]
+        UC[Use Case]
     end
     
     subgraph "Ports"
-        RP[Repository Ports]
-        AP[Application Ports]
+        RP[Port Repositori]
+        AP[Port Aplikasi]
     end
     
     subgraph "Adapters"
-        A1[PostgreSQL Adapter]
-        A2[Redis Adapter]
-        A3[Axum Driver Adapter]
-        A4[HTTP Client Adapter]
+        A1[Adapter PostgreSQL]
+        A2[Adapter Redis]
+        A3[Adapter Penggerak Axum]
+        A4[Adapter Klien HTTP]
     end
     
     FE --> A3
@@ -324,24 +324,24 @@ graph LR
     AP --> A4
     A4 --> EXTERNAL
     
-    DC ---|contains| UC
-    RP ---|defines| UC
+    DC ---|berisi| UC
+    RP ---|mendefinisikan| UC
 ```
 </Diagram>
 
-**Driving Side** (controllers/adapters that push data in):
-- Frontend → Axum Controller → Use Case
-- Java Backend → gRPC Handler → Use Case
+**Sisi Penggerak (Driving Side)** (kontroler/adapter yang mendorong data masuk):
+- Frontend → Kontroler Axum → Use Case
+- Backend Java → Handler gRPC → Use Case
 
-**Driven Side** (adapters that pull data from the core):
-- Use Case → Repository Trait → PostgreSQL/Redis Implementation
-- Use Case → External Service Trait → HTTP Client Implementation
+**Sisi yang Digerakkan (Driven Side)** (adapter yang menarik data dari inti):
+- Use Case → Trait Repositori → Implementasi PostgreSQL/Redis
+- Use Case → Trait Layanan Eksternal → Implementasi Klien HTTP
 
-### Code Walkthrough
+### Penelusuran Kode
 
-Let's trace the flow for creating a clan through all layers:
+Mari telusuri alur untuk membuat klan melalui semua lapisan:
 
-#### 1. Domain Layer: Repository Trait (Port)
+#### 1. Lapisan Domain: Trait Repositori (Port)
 
 ```rust
 // domain/repositories/clan_repository.rs
@@ -357,7 +357,7 @@ pub trait ClanRepository {
     async fn update(&self, clan: Clan) -> Result<Clan, DomainError>;
     async fn delete(&self, id: Uuid) -> Result<(), DomainError>;
     
-    // Leaderboard operations
+    // Operasi papan peringkat
     async fn add_member_points(
         &self,
         clan_id: Uuid,
@@ -369,9 +369,9 @@ pub trait ClanRepository {
 }
 ```
 
-This trait defines **what** operations exist, not **how** they're implemented. It depends only on domain entities and errors.
+Trait ini mendefinisikan operasi **apa** yang ada, bukan **bagaimana** mereka diimplementasikan. Ia hanya bergantung pada entitas domain dan error.
 
-#### 2. Application Layer: Use Case (depends ONLY on domain)
+#### 2. Lapisan Aplikasi: Use Case (bergantung HANYA pada domain)
 
 ```rust
 // application/use_cases/create_clan.rs
@@ -400,29 +400,29 @@ impl<R: ClanRepository> CreateClanUseCaseImpl<R> {
 #[async_trait]
 impl<R: ClanRepository + Send + Sync> CreateClanUseCase for CreateClanUseCaseImpl<R> {
     async fn execute(&self, request: CreateClanRequest) -> Result<Clan, DomainError> {
-        // Validate input
+        // Validasi input
         let name = ClanName::new(request.name)?;
         
-        // Check uniqueness
+        // Periksa keunikan
         if self.repository.find_by_name(&name.0).await?.is_some() {
-            return Err(DomainError::AlreadyExists("Clan name".to_string()));
+            return Err(DomainError::AlreadyExists("Nama klan".to_string()));
         }
         
-        // Create domain entity
+        // Buat entitas domain
         let clan = Clan::new(name, request.description, request.created_by_user_id);
         
-        // Persist to database via repository trait
+        // Simpan ke database melalui trait repositori
         self.repository.create(clan).await
     }
 }
 ```
 
-The use case:
-- Depends on `ClanRepository` trait, not a concrete implementation
-- Contains business rules (validation, uniqueness checks)
-- Returns domain types, not transport types
+Use case:
+- Bergantung pada trait `ClanRepository`, bukan implementasi konkret
+- Berisi aturan bisnis (validasi, pemeriksaan keunikan)
+- Mengembalikan tipe domain, bukan tipe transport
 
-#### 3. Infrastructure Layer: PostgreSQL Implementation (Adapter)
+#### 3. Lapisan Infrastruktur: Implementasi PostgreSQL (Adapter)
 
 ```rust
 // infrastructure/persistence/postgres/clan_repository.rs
@@ -518,7 +518,7 @@ impl ClanRepository for ClanPostgresRepo {
         user_id: Uuid,
         points: i32,
     ) -> Result<i64, DomainError> {
-        // Update user's points in clan
+        // Perbarui poin pengguna di klan
         sqlx::query(
             "INSERT INTO clan_members (clan_id, user_id, points) 
              VALUES ($1, $2, $3)
@@ -531,7 +531,7 @@ impl ClanRepository for ClanPostgresRepo {
         .execute(&self.pool)
         .await?;
         
-        // Get total clan score for leaderboard
+        // Dapatkan total skor klan untuk papan peringkat
         let row: (i64,) = sqlx::query_as(
             "SELECT COALESCE(SUM(points), 0) as total FROM clan_members WHERE clan_id = $1"
         )
@@ -543,7 +543,7 @@ impl ClanRepository for ClanPostgresRepo {
     }
     
     async fn get_top_clans(&self, limit: i64) -> Result<Vec<Clan>, DomainError> {
-        // Join clans with aggregated member points, order by score
+        // Gabung klan dengan poin anggota teragregasi, urutkan berdasarkan skor
         let rows: Vec<PgRow> = sqlx::query_as(
             "SELECT c.id, c.name, c.description, c.created_by_user_id, c.created_at,
                     COALESCE(SUM(cm.points), 0) as total_points
@@ -562,18 +562,18 @@ impl ClanRepository for ClanPostgresRepo {
 }
 ```
 
-The PostgreSQL adapter:
-- Implements the `ClanRepository` trait
-- Uses `sqlx` for database queries
-- Maps database rows to domain entities
-- Has **no knowledge of HTTP or use cases**
+Adapter PostgreSQL:
+- Mengimplementasikan trait `ClanRepository`
+- Menggunakan `sqlx` untuk kueri database
+- Memetakan baris database ke entitas domain
+- **Tidak memiliki pengetahuan tentang HTTP atau use case**
 
-#### 4. Presentation Layer: Axum Controller (Driver Adapter)
+#### 4. Lapisan Presentasi: Kontroler Axum (Adapter Penggerak)
 
 ```rust
 // presentation/api/v1/clans.rs
 use axum::{extract::State, Json};
-usecrate::domain::errors::ApiError;
+use crate::domain::errors::ApiError;
 use crate::application::use_cases::create_clan::CreateClanUseCase;
 use crate::application::dto::{CreateClanRequest, CreateClanResponse};
 
@@ -587,15 +587,15 @@ pub async fn create_clan(
 }
 ```
 
-The controller:
-- Receives HTTP request (JSON body)
-- Calls the use case with injected dependencies
-- Maps domain response to HTTP response
-- Uses `State` for dependency injection
+Kontroler:
+- Menerima request HTTP (body JSON)
+- Memanggil use case dengan dependensi yang diinjeksi
+- Memetakan response domain ke response HTTP
+- Menggunakan `State` untuk dependency injection
 
-### Dependency Injection Pattern
+### pattern Dependency Injection
 
-We use constructor injection via generic type parameters instead of a DI framework:
+Kami menggunakan constructor injection via parameter tipe generik alih-alih framework DI:
 
 ```rust
 // presentation/api/v1/routes.rs
@@ -605,30 +605,30 @@ use crate::application::use_cases::create_clan::CreateClanUseCaseImpl;
 use crate::application::use_cases::get_top_clans::GetTopClansUseCaseImpl;
 
 pub fn create_routes() {
-    // Create infrastructure instances
+    // Buat instance infrastruktur
     let pg_repo = ClanPostgresRepo::new(pool);
     let redis_repo = ClanRedisRepo::new(redis_client);
     
-    // Wire use cases with dependencies (constructor injection)
+    // Pasang use case dengan dependensi (constructor injection)
     let create_clan_use_case = Box::new(CreateClanUseCaseImpl::new(pg_repo));
     let get_top_clans_use_case = Box::new(GetTopClansUseCaseImpl::new(pg_repo, redis_repo));
     
-    // Wire routes with use cases (via State)
+    // Pasang rute dengan use case (via State)
     let routes = routes()
         .route("/clans", post(create_clan).with_state(create_clan_use_case))
         .route("/clans/top", get(get_top_clans).with_state(get_top_clans_use_case));
 }
 ```
 
-**Why generic type parameters?**
-- Compile-time dependency resolution (no runtime overhead)
-- Type-safe, zero-cost abstraction
-- No external DI framework needed
-- Easy to swap implementations (mocks, fakes) in tests
+**Mengapa parameter tipe generik?**
+- Resolusi dependensi waktu kompilasi (tanpa overhead runtime)
+- Abstraksi zero-cost yang type-safe
+- Tidak memerlukan framework DI eksternal
+- Mudah menukar implementasi (mock, fake) dalam pengujian
 
-### File Organization per Module
+### Organisasi File per Modul
 
-Each bounded context mirrors the same 4-layer structure:
+Setiap konteks terbatas mencerminkan struktur 4 lapisan yang sama:
 
 ```
 src/modules/
@@ -685,18 +685,18 @@ src/modules/
     └── presentation/
 ```
 
-Each module is self-contained with clear boundaries. This organization:
-- Makes code navigation straightforward
-- Encourages bounded context separation
-- Allows independent module testing
+Setiap modul bersifat mandiri dengan batasan yang jelas. Organisasi ini:
+- Membuat navigasi kode menjadi mudah
+- Mendorong pemisahan konteks terbatas
+- Memungkinkan pengujian modul secara independen
 
-### Pros and Cons of Clean Architecture in Rust
+### Kelebihan dan Kekurangan Clean Architecture di Rust
 
-#### Pros
+#### Kelebihan
 
-**Amazing testability**:
+**Testabilitas luar biasa**:
 ```rust
-// Tests run without database or async runtime
+// Pengujian berjalan tanpa database atau runtime async
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -716,40 +716,40 @@ mod tests {
 }
 ```
 
-**Compiler-enforced boundaries**:
+**Batasan yang ditegakkan kompiler**:
 ```rust
-// Compile error if domain tries to use sqlx
-error[E0432]: import `sqlx` is not visible here
+// Error kompilasi jika domain mencoba menggunakan sqlx
+error[E0432]: import `sqlx` tidak terlihat di sini
   --> domain/entities/clan.rs:1:10
    |
-1  | use sqlx::prelude::*;  // <- ERROR: database dependency in domain
+1  | use sqlx::prelude::*;  // <- ERROR: dependensi database di domain
 ```
 
-**Easy refactoring**:
-- Change database driver without touching domain/use cases
-- Swap Redis cache for another solution
-- Replace Axum with another HTTP framework
+**Refactoring yang mudah**:
+- Ganti driver database tanpa menyentuh domain/use case
+- Tukar cache Redis dengan solusi lain
+- Ganti Axum dengan framework HTTP lain
 
-#### Cons
+#### Kekurangan
 
-**More files/boilerplate**:
-- Each operation spans multiple layers
-- Repository traits + implementations + use cases + controllers
-- More code to maintain (but better organized)
+**Lebih banyak file/boilerplate**:
+- Setiap operasi mencakup beberapa lapisan
+- Trait repositori + implementasi + use case + kontroler
+- Lebih banyak kode untuk dipelihara (tetapi lebih terorganisir)
 
-**Async-trait overhead**:
+**Overhead async-trait**:
 ```rust
-// Each async trait method has a boxed future overhead
+// Setiap metode trait async memiliki overhead boxed future
 #[async_trait]
 pub trait ClanRepository {
     async fn find_by_id(&self, id: Uuid) -> Result<Option<Clan>, DomainError>;
-    // Compiles to: fn find_by_id(&self, id: Uuid) -> Box<dyn Future<Output = Result<...>>>;
+    // Dikompilasi menjadi: fn find_by_id(&self, id: Uuid) -> Box<dyn Future<Output = Result<...>>>;
 }
 ```
 
-**Generic type parameters can be verbose**:
+**Parameter tipe generik bisa jadi verbose**:
 ```rust
-// Verbose but type-safe
+// Verbose tapi type-safe
 impl<R: ClanRepository + Send + Sync> CreateClanUseCaseImpl<R> {
     pub fn new(repository: R) -> Self {
         Self { repository }
@@ -757,12 +757,12 @@ impl<R: ClanRepository + Send + Sync> CreateClanUseCaseImpl<R> {
 }
 ```
 
-#### Trade-off Assessment
+#### Penilaian Trade-off
 
-The Rust compiler enforces Clean Architecture boundaries so effectively that the architectural debt is practically impossible to accumulate accidentally. While there's upfront verbosity, the payoff is:
+Kompiler Rust menegakkan batasan Clean Architecture dengan sangat efektif sehingga utang Architecture praktis tidak mungkin terakumulasi secara tidak sengaja. Meskipun ada verbositas di awal, hasilnya adalah:
 
-1. **Tests that run in microseconds** (no database setup)
-2. **Refactors that the compiler validates**
-3. **Teams that can work independently on different modules**
+1. **Pengujian yang berjalan dalam mikrodetik** (tanpa setup database)
+2. **Refactor yang divalidasi kompiler**
+3. **Tim yang dapat bekerja secara independen pada modul yang berbeda**
 
-The occasional `use crate::domain::repositories::ClanRepository;` import is a small price for architectural integrity.
+Import `use crate::domain::repositories::ClanRepository;` sesekali adalah harga kecil untuk integritas Architecture.

@@ -1,10 +1,10 @@
 ---
 title: Rust Pipeline
-description: Rust backend CI/CD — cargo fmt, clippy, doc, nextest, tarpaulin, and multi-arch Docker
+description: CI/CD Rust backend — cargo fmt, clippy, doc, nextest, tarpaulin, dan multi-arch Docker
 ---
 
 
-The Rust backend uses Edition 2024 with MSRV 1.85 and Axum 0.8.8. The pipeline runs four workflow files with parallel quality jobs, SonarCloud coverage, and multi-arch Docker builds.
+Rust backend menggunakan Edition 2024 dengan MSRV 1.85 dan Axum 0.8.8. Pipeline menjalankan empat workflow files dengan parallel quality jobs, SonarCloud coverage, dan multi-arch Docker builds.
 
 ```mermaid
 flowchart TD
@@ -50,16 +50,16 @@ flowchart TD
 
 <Cards>
 <Card title="ci.yml" icon="play">
-Four parallel jobs: fmt, clippy, doc, test (PostgreSQL + Redis). Docker job runs last. All must pass.
+Empat parallel jobs: fmt, clippy, doc, test (PostgreSQL + Redis). Docker job berjalan terakhir. Semua harus lulus.
 </Card>
 <Card title="sonar.yml" icon="chart">
-tarpaulin coverage → SonarCloud. PostgreSQL + Redis services. Triggers after ci.yml success.
+tarpaulin coverage → SonarCloud. PostgreSQL + Redis services. Trigger setelah ci.yml sukses.
 </Card>
 <Card title="security-audit.yml" icon="shield">
-cargo-audit + cargo-deny (deny.toml whitelist). Triggers on Cargo.toml changes and weekly scan.
+cargo-audit + cargo-deny (deny.toml whitelist). Trigger pada perubahan Cargo.toml dan scan mingguan.
 </Card>
 <Card title="release.yml" icon="package">
-Multi-arch Docker build (amd64, arm64). Pushes to GHCR with version tags. SBOM labels included.
+Multi-arch Docker build (amd64, arm64). Push ke GHCR dengan version tags. Label SBOM disertakan.
 </Card>
 </Cards>
 
@@ -67,19 +67,19 @@ Multi-arch Docker build (amd64, arm64). Pushes to GHCR with version tags. SBOM l
 
 <Cards>
 <Card title="fmt" icon="code">
-cargo fmt with `max_width=100`. Fails if code not formatted. Runs first in CI pipeline.
+cargo fmt dengan `max_width=100`. Gagal jika kode tidak diformat. Berjalan pertama di CI pipeline.
 </Card>
 <Card title="clippy" icon="book">
-cargo clippy --all --all-targets with MSRV 1.85. No warnings allowed. Clippy.toml configured.
+cargo clippy --all --all-targets dengan MSRV 1.85. Tidak ada warnings yang diizinkan. Clippy.toml dikonfigurasi.
 </Card>
 <Card title="doc" icon="read">
-cargo doc --all --no-deps with RUSTDOCFLAGS=-D warnings. Fails on doc warnings.
+cargo doc --all --no-deps dengan RUSTDOCFLAGS=-D warnings. Gagal pada doc warnings.
 </Card>
 <Card title="nextest" icon="test">
-cargo nextest with 7 test binaries, 2 retries, 120s timeout. PostgreSQL + Redis services.
+cargo nextest dengan 7 test binaries, 2 retries, 120s timeout. PostgreSQL + Redis services.
 </Card>
 <Card title="tarpaulin" icon="chart">
-tarpaulin coverage for SonarCloud. Tracks branch and line coverage. Minimum 80% branches.
+tarpaulin coverage untuk SonarCloud. Melacak branch dan line coverage. Minimum 80% branches.
 </Card>
 </Cards>
 
@@ -87,19 +87,19 @@ tarpaulin coverage for SonarCloud. Tracks branch and line coverage. Minimum 80% 
 
 | Tool | Threshold | Purpose |
 |------|-----------|---------|
-| cargo fmt | must pass | Code formatting |
-| clippy | no warnings | Code quality |
-| cargo doc | no warnings | Documentation quality |
-| nextest | pass all tests | Functional correctness |
-| tarpaulin | ≥80% branches | Coverage quality |
-| cargo-audit | no high vulns | Security scanning |
-| cargo-deny | match whitelist | License compliance |
+| cargo fmt | harus lulus | Formatting kode |
+| clippy | tanpa warnings | Kualitas kode |
+| cargo doc | tanpa warnings | Kualitas dokumentasi |
+| nextest | lolos semua tests | Kebenaran fungsional |
+| tarpaulin | ≥80% branches | Kualitas coverage |
+| cargo-audit | tanpa high vulns | Security scanning |
+| cargo-deny | cocok whitelist | License compliance |
 
 ## Rust Build Tools
 
 | Tool | Version | Purpose |
 |------|---------|---------|
-| Rust | 1.85 MSRV | Runtime and compile target |
+| Rust | 1.85 MSRV | Runtime dan compile target |
 | Rust Edition | 2024 | Language features |
 | Axum | 0.8.8 | Web framework |
 | tokio | Latest | Async runtime |
@@ -114,33 +114,33 @@ tarpaulin coverage for SonarCloud. Tracks branch and line coverage. Minimum 80% 
 
 <Cards>
 <Card title="fmt job" icon="checklist">
-Runs `cargo fmt --all -- --check`. Checks formatting without modifying files. Fast fail if code not formatted.
+Menjalankan `cargo fmt --all -- --check`. Memeriksa formatting tanpa mengubah file. Fast fail jika kode tidak diformat.
 </Card>
 <Card title="clippy job" icon="linters">
-Runs `cargo clippy --all --all-targets -- -W warnings`. Enables all lints and treats warnings as errors.
+Menjalankan `cargo clippy --all --all-targets -- -W warnings`. Mengaktifkan semua lints dan memperlakukan warnings sebagai error.
 </Card>
 <Card title="doc job" icon="book">
-Runs `cargo doc --all --no-deps`. Sets RUSTDOCFLAGS=-D warnings to fail on documentation warnings.
+Menjalankan `cargo doc --all --no-deps`. Mengatur RUSTDOCFLAGS=-D warnings untuk gagal pada doc warnings.
 </Card>
 <Card title="test job" icon="test">
-Runs `cargo nextest`. Starts PostgreSQL 17 and Redis 7 services. Builds and runs 7 test binaries.
+Menjalankan `cargo nextest`. Memulai PostgreSQL 17 dan Redis 7 services. Membuild dan menjalankan 7 test binaries.
 </Card>
 <Card title="docker job" icon="docker">
-After all other jobs pass, builds Docker image with Buildx. Runs `docker buildx build --platform linux/amd64,linux/arm64`.
+Setelah semua jobs lain lulus, membuild Docker image dengan Buildx. Menjalankan `docker buildx build --platform linux/amd64,linux/arm64`.
 </Card>
 </Cards>
 
-## SonarCloud Integration
+## Integrasi SonarCloud
 
 <Cards>
 <Card title="tarpaulin → SonarCloud" icon="cloud">
-After ci.yml passes, sonar.yml runs tarpaulin coverage and uploads to SonarCloud. Requires SONAR_TOKEN secret.
+Setelah ci.yml lulus, sonar.yml menjalankan tarpaulin coverage dan upload ke SonarCloud. Memerlukan secret SONAR_TOKEN.
 </Card>
 <Card title="Coverage Metrics" icon="chart">
-- Branch coverage tracked
-- Line coverage tracked
-- Code smells tracked
-- Minimum 80% branches required
+- Branch coverage dilacak
+- Line coverage dilacak
+- Code smells dilacak
+- Minimum 80% branches diperlukan
 </Card>
 </Cards>
 
@@ -148,15 +148,15 @@ After ci.yml passes, sonar.yml runs tarpaulin coverage and uploads to SonarCloud
 
 <Cards>
 <Card title="cargo-audit" icon="vuln">
-Scans Cargo.lock for known vulnerabilities in dependencies. Runs weekly and on manual dispatch.
+Memindai Cargo.lock untuk known vulnerabilities pada dependencies. Berjalan mingguan dan pada manual dispatch.
 </Card>
 <Card title="cargo-deny" icon="shield">
-Enforces deny.toml license whitelist and advisory database. Blocks builds if license or advisory violations found.
+Memberlakukan deny.toml license whitelist dan advisory database. Mem-block builds jika pelanggaran license atau advisory ditemukan.
 </Card>
 <Card title="Triggers" icon="clock">
-- Weekly scheduled scan
-- Triggered when Cargo.toml or Cargo.lock changes
-- Manual dispatch available
+- Scan terjadwal mingguan
+- Dipicu ketika Cargo.toml atau Cargo.lock berubah
+- Manual dispatch tersedia
 </Card>
 </Cards>
 
@@ -164,12 +164,12 @@ Enforces deny.toml license whitelist and advisory database. Blocks builds if lic
 
 <Cards>
 <Card title="Platforms" icon="cpu">
-Builds for linux/amd64 and linux/arm64. Docker Buildx used for cross-platform builds.
+Membangun untuk linux/amd64 dan linux/arm64. Docker Buildx digunakan untuk cross-platform builds.
 </Card>
 <Card title="Labels" icon="tag">
-SBOM (Software Bill of Materials) labels included. Version tags pushed to GHCR.
+Label SBOM (Software Bill of Materials) disertakan. Version tags di-push ke GHCR.
 </Card>
 <Card title="Image Size" icon="compress">
-Multi-stage build reduces final image size. Rust 1.85 Alpine base image.
+Multi-stage build mengurangi ukuran image final. Base image Rust 1.85 Alpine.
 </Card>
 </Cards>

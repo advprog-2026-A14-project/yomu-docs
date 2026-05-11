@@ -1,26 +1,26 @@
 ---
-title: User Management
-description: User profile management — view, update, batch lookup, and account deletion
+title: Manajemen Pengguna
+description: Manajemen profil pengguna — lihat, perbarui, batch lookup, dan penghapusan akun
 ---
 
-The user management module provides REST endpoints for user profile operations including viewing, updating, batch lookups, and soft account deletion. All endpoints require JWT authentication.
+Modul manajemen pengguna menyediakan endpoint REST untuk operasi profil pengguna termasuk melihat, memperbarui, batch lookup, dan soft delete akun. Semua endpoint memerlukan autentikasi JWT.
 
-## UserController Endpoints
+## Endpoint UserController
 
-| Endpoint | Method | Description |
+| Endpoint | Method | Keterangan |
 |----------|--------|-------------|
-| `/api/v1/users/me` | GET | Current user profile |
-| `/api/v1/users/batch` | GET | Batch lookup by multiple user IDs |
-| `/api/v1/users/me` | PATCH | Update profile (name, phone, email) |
-| `/api/v1/users/me/password` | PATCH | Change password |
-| `/api/v1/users/me/login-identifiers` | PATCH | Update email or phone number |
-| `/api/v1/users/me` | DELETE | Soft delete account |
+| `/api/v1/users/me` | GET | Profil pengguna saat ini |
+| `/api/v1/users/batch` | GET | Batch lookup berdasarkan beberapa user ID |
+| `/api/v1/users/me` | PATCH | Perbarui profil (nama, telepon, email) |
+| `/api/v1/users/me/password` | PATCH | Ganti password |
+| `/api/v1/users/me/login-identifiers` | PATCH | Perbarui email atau nomor telepon |
+| `/api/v1/users/me` | DELETE | Soft delete akun |
 
 <Callout type="info">
-The `/api/v1/users/batch` endpoint requires JWT authentication and supports max 100 user IDs per request via query parameter `ids=uuid1,uuid2,...`.
+Endpoint `/api/v1/users/batch` memerlukan autentikasi JWT dan mendukung maksimal 100 user ID per request melalui query parameter `ids=uuid1,uuid2,...`.
 </Callout>
 
-## UserEntity Model
+## Model UserEntity
 
 ```java
 @Entity
@@ -65,44 +65,44 @@ public class UserEntity {
 }
 ```
 
-### Field Descriptions
+### Deskripsi Field
 
-| Field | Type | Description | Constraints |
+| Field | Type | Keterangan | Constraints |
 |-------|------|-------------|-------------|
 | `userId` | UUID | Primary key | Auto-generated, UUID v4 |
-| `username` | String | Unique login identifier | Non-null, unique, case-sensitive |
-| `displayName` | String | Visible user name | Non-null, can contain spaces |
-| `email` | String | Email address | Unique, nullable |
-| `phoneNumber` | String | Phone number | Unique, nullable |
-| `passwordHash` | String | BCrypt hashed password | Nullable (SSO-only users) |
-| `role` | Role enum | User authority level | PELAJAR or ADMIN |
-| `googleSub` | String | Google authentication subject | Unique, nullable |
-| `createdAt` | Instant | Account creation timestamp | Auto-set on insert |
-| `updatedAt` | Instant | Last update timestamp | Auto-set on update |
-| `deletedAt` | Instant | Soft delete timestamp | NULL = active, Instant = deleted |
+| `username` | String | Identifier login unik | Non-null, unik, case-sensitive |
+| `displayName` | String | Nama pengguna yang ditampilkan | Non-null, dapat berisi spasi |
+| `email` | String | Alamat email | Unik, nullable |
+| `phoneNumber` | String | Nomor telepon | Unik, nullable |
+| `passwordHash` | String | Password yang di-hash dengan BCrypt | Nullable (pengguna SSO-only) |
+| `role` | Role enum | Tingkat otoritas pengguna | PELAJAR atau ADMIN |
+| `googleSub` | String | Subjek autentikasi Google | Unik, nullable |
+| `createdAt` | Instant | Timestamp pembuatan akun | Auto-set saat insert |
+| `updatedAt` | Instant | Timestamp pembaruan terakhir | Auto-set saat update |
+| `deletedAt` | Instant | Timestamp soft delete | NULL = aktif, Instant = dihapus |
 
-## Role Enum
+## Enum Role
 
-Users have one of two roles:
+Pengguna memiliki salah satu dari dua role:
 
 ```java
 public enum Role {
-    PELAJAR,  // Student - default for regular users
-    ADMIN     // Administrator - full access
+    PELAJAR,  // Pelajar - default untuk pengguna biasa
+    ADMIN     // Administrator - akses penuh
 }
 ```
 
-## UserRepository JPA Queries
+## Query JPA UserRepository
 
-The repository provides these custom queries:
+Repository menyediakan custom query berikut:
 
 ```java
-// Find by identifier with deleted filter
+// Cari berdasarkan identifier dengan filter deleted
 findByEmailAndDeletedAtIsNull(String email)
 findByPhoneNumberAndDeletedAtIsNull(String phoneNumber)
 findByUsernameAndDeletedAtIsNull(String username)
 
-// Find by identifier including soft-deleted
+// Cari berdasarkan identifier termasuk yang di-soft-delete
 findByEmail(String email)
 findByPhoneNumber(String phoneNumber)
 findByUsername(String username)
@@ -115,31 +115,31 @@ findAllByUserIdIn(List<UUID> userIds)
 ```
 
 <Callout type="warning">
-The `deletedAt` field is checked with `IS NULL` for active queries and explicitly checked for soft-deleted users. This prevents soft-deleted users from logging in or appearing in lookups.
+Field `deletedAt` diperiksa dengan `IS NULL` untuk query aktif dan secara eksplisit diperiksa untuk pengguna yang di-soft-delete. Ini mencegah pengguna yang di-soft-delete dari login atau muncul dalam pencarian.
 </Callout>
 
-## Profile Update Constraints
+## Batasan Pembaruan Profil
 
-### Update Profile (`PATCH /api/v1/users/me`)
+### Perbarui Profil (`PATCH /api/v1/users/me`)
 - `displayName`: String, non-null
-- `phoneNumber`: String, unique, optional
-- `email`: String, unique, optional
+- `phoneNumber`: String, unik, opsional
+- `email`: String, unik, opsional
 
-### Change Password (`PATCH /api/v1/users/me/password`)
-- `oldPassword`: Current password for verification
-- `newPassword`: Minimum 8 characters
-- Only users with `passwordHash` (non-SSO) can change password
+### Ganti Password (`PATCH /api/v1/users/me/password`)
+- `oldPassword`: Password saat ini untuk verifikasi
+- `newPassword`: Minimum 8 karakter
+- Hanya pengguna dengan `passwordHash` (non-SSO) yang dapat mengganti password
 
-### Update Login Identifiers (`PATCH /api/v1/users/me/login-identifiers`)
-- `email`: New email, must be unique
-- `phoneNumber`: New phone, must be unique
-- SSO-only users (null passwordHash) can update identifiers
+### Perbarui Login Identifiers (`PATCH /api/v1/users/me/login-identifiers`)
+- `email`: Email baru, harus unik
+- `phoneNumber`: Nomor telepon baru, harus unik
+- Pengguna SSO-only (passwordHash null) dapat memperbarui identifier
 
-## Soft Delete Behavior
+## Perilaku Soft Delete
 
-When a user soft-deletes:
-1. `deleted_at` set to current `Instant`
-2. All queries filter out with `deletedAt IS NULL`
-3. User cannot login (active query returns missing)
-4. Google OAuth SSO users can still be soft-deleted
-5. Deleted flag persists for audit trail
+Ketika pengguna melakukan soft-delete:
+1. `deleted_at` diatur ke `Instant` saat ini
+2. Semua query memfilter dengan `deletedAt IS NULL`
+3. Pengguna tidak dapat login (query aktif mengembalikan tidak ditemukan)
+4. Pengguna Google OAuth SSO tetap dapat di-soft-delete
+5. Flag deleted tetap ada untuk audit trail

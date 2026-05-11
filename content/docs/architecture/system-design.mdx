@@ -1,28 +1,28 @@
 ---
-title: System Design
-description: Detailed system design — bounded contexts, service decomposition, polyglot rationale
+title: Desain Sistem
+description: Desain sistem terperinci — bounded context, dekomposisi layanan, rasional polyglot
 ---
 
 
-## Why Polyglot Architecture?
+## Mengapa Architecture Polyglot?
 
-Yomu uses multiple programming languages and frameworks because each domain has unique requirements that are best suited to specific technologies. This approach follows the **polyglot programming** principle — using the right tool for each job rather than forcing a one-size-fits-all solution.
+Yomu menggunakan beberapa bahasa pemrograman dan framework karena setiap domain memiliki kebutuhan unik yang paling cocok dengan teknologi tertentu. Pendekatan ini mengikuti prinsip **polyglot programming** — menggunakan alat yang tepat untuk setiap pekerjaan daripada memaksakan solusi satu ukuran untuk semua.
 
-| Domain | Technology | Rationale |
+| Domain | Teknologi | Rasional |
 |--------|------------|-----------|
-| **Authentication & User Management** | Java Spring Boot | Robust security ecosystem, mature JWT libraries, strong transaction support, extensive ecosystem for enterprise features |
-| **Gamification & Leaderboard** | Rust Axum | High-performance computational work (score calculations, rankings), memory safety for concurrent requests, zero-cost abstractions for real-time updates |
-| **Frontend & API Composition** | Next.js | Server-side rendering for SEO, React ecosystem for component design, API routes as BFF layer, static generation for fast content pages |
+| **Autentikasi & Manajemen Pengguna** | Java Spring Boot | Ekosistem keamanan yang matang, pustaka JWT yang solid, dukungan transaksi yang kuat, ekosistem ekstensif untuk fitur enterprise |
+| **Gamifikasi & Leaderboard** | Rust Axum | Komputasi performa tinggi (kalkulasi skor, peringkat), keamanan memori untuk request konkuren, abstraksi zero-cost untuk pembaruan real-time |
+| **Frontend & Komposisi API** | Next.js | Server-side rendering untuk SEO, ekosistem React untuk desain komponen, API routes sebagai lapisan BFF, static generation untuk halaman konten cepat |
 
 <Callout type="info">
-The Rust gamification service was chosen specifically for its ability to handle real-time leaderboard calculations with sub-millisecond latency, a critical requirement for user engagement in competitive learning scenarios.
+Layanan gamifikasi Rust dipilih secara spesifik karena kemampuannya menangani kalkulasi leaderboard real-time dengan latensi sub-milidetik, sebuah kebutuhan kritis untuk keterlibatan pengguna dalam skenario pembelajaran kompetitif.
 </Callout>
 
-## Bounded Contexts
+## Bounded Context
 
-A bounded context defines the boundaries within which a particular domain model applies. Each context has its own language, rules, and data model — ensuring clean separation and preventing model corruption across domains.
+Sebuah bounded context mendefinisikan batasan di mana model domain tertentu berlaku. Setiap context memiliki bahasa, aturan, dan model datanya sendiri — memastikan pemisahan yang bersih dan mencegah korupsi model antar domain.
 
-### Domain Breakdown
+### Rincian Domain
 
 ```mermaid
 graph LR
@@ -48,103 +48,103 @@ graph LR
     GAMIF --> SYNC
 ```
 
-### Context Details
+### Detail Context
 
-| Context | Description | Key Entities | Service |
+| Context | Deskripsi | Entitas Utama | Layanan |
 |---------|-------------|--------------|---------|
-| **Auth & User** | User registration, authentication, profile management | User, Role, Permission, Session | Java |
-| **Content** | Articles, quizzes, comments, and content organization | Article, Quiz, Comment, Category | Java |
-| **Forum** | Discussion threads and commenting system | Thread, Comment, Reaction | Java |
-| **League** | Clan/Team management, rankings, score tracking | Clan, Member, Score, Leaderboard | Rust |
-| **Gamification** | Achievements, daily missions, experience points | Achievement, Mission, XP, Reward | Rust |
-| **User Sync** | Two-way synchronization between Core and Engine | Outbox Event, Shadow User | Java/Rust |
+| **Auth & User** | Registrasi pengguna, autentikasi, manajemen profil | User, Role, Permission, Session | Java |
+| **Content** | Artikel, kuis, komentar, dan organisasi konten | Article, Quiz, Comment, Category | Java |
+| **Forum** | Thread diskusi dan sistem komentar | Thread, Comment, Reaction | Java |
+| **League** | Manajemen klan/tim, peringkat, pelacakan skor | Clan, Member, Score, Leaderboard | Rust |
+| **Gamification** | Achievement, misi harian, poin pengalaman | Achievement, Mission, XP, Reward | Rust |
+| **User Sync** | Sinkronisasi dua arah antara Core dan Engine | Outbox Event, Shadow User | Java/Rust |
 
-## Service Decomposition Rationale
+## Rasional Dekomposisi Layanan
 
 ### Java Core Service (Spring Boot)
 
-The Java service handles core business operations requiring strong consistency and transactional integrity:
+Layanan Java menangani operasi bisnis inti yang memerlukan konsistensi kuat dan integritas transaksional:
 
-- **User Management** — Login, registration, password reset, profile updates
-- **Content CRUD** — Articles, quizzes, comments with hierarchical structure
-- **Transaction Boundaries** — Atomic operations across related entities
-- **Outbox Pattern** — Event generation for async sync to other services
+- **Manajemen Pengguna** — Login, registrasi, reset password, pembaruan profil
+- **CRUD Konten** — Artikel, kuis, komentar dengan struktur hierarkis
+- **Transaction Boundaries** — Operasi atomik di seluruh entitas terkait
+- **Outbox Pattern** — Pembuatan event untuk sinkronisasi async ke layanan lain
 
-#### Core Service Key Features
+#### Fitur Utama Core Service
 
-- **Security** — Spring Security with JWT token validation, OAuth2 support for Google login
-- **Data Integrity** — PostgreSQL transactions ensure ACID compliance for user and content operations
-- **Event-Driven** — Outbox pattern ensures reliable delivery of user events to Rust service
-- **RESTful API** — Resource-oriented design following HATEOAS principles
+- **Keamanan** — Spring Security dengan validasi JWT token, dukungan OAuth2 untuk login Google
+- **Integritas Data** — Transaksi PostgreSQL memastikan kepatuhan ACID untuk operasi pengguna dan konten
+- **Event-Driven** — Outbox pattern memastikan pengiriman event pengguna yang andal ke layanan Rust
+- **RESTful API** — Desain berorientasi resource mengikuti prinsip HATEOAS
 
 ### Rust Engine Service (Axum)
 
-The Rust service focuses on computational intensity and performance-critical operations:
+Layanan Rust berfokus pada intensitas komputasi dan operasi kritis performa:
 
-- **Leaderboard Calculations** — Real-time score aggregation and ranking
-- **Clan Management** — Team formation, score distribution, buff applications
-- **Gamification Logic** — Achievement progress tracking, mission completion, XP calculations
-- **Caching Layer** — Redis integration for fast leaderboard access
+- **Kalkulasi Leaderboard** — Agregasi skor real-time dan pemeringkatan
+- **Manajemen Klan** — Pembentukan tim, distribusi skor, penerapan buff
+- **Logika Gamifikasi** — Pelacakan progres achievement, penyelesaian misi, kalkulasi XP
+- **Lapisan Caching** — Integrasi Redis untuk akses leaderboard yang cepat
 
-#### Engine Service Key Features
+#### Fitur Utama Engine Service
 
-- **Performance** — Zero-cost abstractions in Rust enable sub-millisecond response times
-- **Concurrency** — Async/await in Rust handles thousands of concurrent connections efficiently
-- **Memory Safety** — Borrow checker prevents data races without garbage collection overhead
-- **Real-time** — WebSocket support for live leaderboard updates when needed
+- **Performa** — Abstraksi zero-cost di Rust memungkinkan waktu response sub-milidetik
+- **Konkurensi** — Async/await di Rust menangani ribuan koneksi konkuren secara efisien
+- **Keamanan Memori** — Borrow checker mencegah data race tanpa overhead garbage collection
+- **Real-time** — Dukungan WebSocket untuk pembaruan leaderboard langsung saat dibutuhkan
 
 <Callout type="warning">
-Rust services have no database writes to Core_DB. All data flowing to Java must go through the Java service's own APIs. This single-direction data flow prevents consistency issues.
+Layanan Rust tidak melakukan penulisan database ke Core_DB. Semua data yang mengalir ke Java harus melalui API milik layanan Java sendiri. Aliran data satu arah ini mencegah masalah konsistensi.
 </Callout>
 
-## Polyglot Architecture: Pros and Cons
+## Architecture Polyglot: Kelebihan dan Kekurangan
 
-### Advantages
+### Keunggulan
 
-| Benefit | Description |
+| Manfaat | Deskripsi |
 |---------|-------------|
-| **Optimal Performance** | Each service uses the most efficient language for its workload (Rust for compute, Java for business logic) |
-| **Team Specialization** | Engineers can focus on areas matching their expertise (JVM experts vs Systems programmers) |
-| **Isolated Failures** | Service failures don't cascade — Java works even if Rust is down |
-| **Scalability** | Scale each service independently based on load patterns |
-| **Technology Evolution** | Upgrade one service without affecting others |
+| **Performa Optimal** | Setiap layanan menggunakan bahasa paling efisien untuk beban kerjanya (Rust untuk komputasi, Java untuk logika bisnis) |
+| **Spesialisasi Tim** | Engineer dapat fokus pada area yang sesuai dengan keahlian mereka (ahli JVM vs programmer sistem) |
+| **Kegagalan Terisolasi** | Kegagalan layanan tidak menjalar — Java tetap bekerja meskipun Rust down |
+| **Skalabilitas** | Skalakan setiap layanan secara independen berdasarkan pattern beban |
+| **Evolusi Teknologi** | Upgrade satu layanan tanpa memengaruhi yang lain |
 
-### Challenges
+### Tantangan
 
-| Challenge | Mitigation Strategy |
+| Tantangan | Strategi Mitigasi |
 |-----------|---------------------|
-| **Integration Complexity** | Clearly defined APIs, contract testing, async messaging via outbox pattern |
-| **Operational Overhead** | Docker Compose orchestration, health checks, unified monitoring |
-| **Data Consistency** | Eventual consistency via event sourcing, Idempotent sync handlers |
-| **Debugging Distributed Tracing** | OpenTelemetry integration, Correlation IDs, centralized logging |
+| **Kompleksitas Integrasi** | API yang terdefinisi jelas, contract testing, pengiriman pesan async via outbox pattern |
+| **Overhead Operasional** | Orkestrasi Docker Compose, health check, monitoring terpadu |
+| **Konsistensi Data** | Konsistensi eventual via event sourcing, handler sinkronisasi idempoten |
+| **Debugging Distributed Tracing** | Integrasi OpenTelemetry, Correlation ID, logging terpusat |
 
-### Choosing the Right Language for Each Domain
+### Memilih Bahasa yang Tepat untuk Setiap Domain
 
-#### Why Java for Core Services?
+#### Mengapa Java untuk Core Services?
 
-- **Mature Ecosystem** — Spring Boot provides out-of-box solutions for security, transactions, and REST APIs
-- **Type Safety** — Strong typing catches errors at compile time
-- **Error Recovery** — Exception handling works well for business logic with multiple failure modes
-- **Developer Experience** — Wide talent pool, extensive documentation, mature tooling
+- **Ekosistem Matang** — Spring Boot menyediakan solusi out-of-box untuk keamanan, transaksi, dan REST API
+- **Type Safety** — Strong typing menangkap error pada waktu kompilasi
+- **Pemulihan Error** — Exception handling bekerja baik untuk logika bisnis dengan banyak mode kegagalan
+- **Developer Experience** — Talent pool luas, dokumentasi ekstensif, tooling matang
 
-#### Why Rust for Engine Services?
+#### Mengapa Rust untuk Engine Services?
 
-- **Performance** — No garbage collector pauses, direct memory control
-- **Concurrency** — Async/await integrated into language, no callback hell
-- **Memory Efficiency** — Predictable memory usage under load
-- **Safety** — borrow checker prevents null pointers and data races at compile time
+- **Performa** — Tidak ada jeda garbage collector, kontrol memori langsung
+- **Konkurensi** — Async/await terintegrasi dalam bahasa, tidak ada callback hell
+- **Efisiensi Memori** — Penggunaan memori yang dapat diprediksi di bawah beban
+- **Keamanan** — Borrow checker mencegah null pointer dan data race pada waktu kompilasi
 
-## Service Boundaries and Contracts
+## Batasan dan Kontrak Layanan
 
-Each service exposes a well-defined API contract:
+Setiap layanan mengekspos kontrak API yang terdefinisi dengan baik:
 
-- **Java Core Service** — REST HTTP/1.1 with JSON payloads
-- **Rust Engine Service** — REST HTTP/1.1 with JSON payloads, optional gRPC for internal use
-- **Frontend → Backend** — Next.js API routes as BFF layer
+- **Java Core Service** — REST HTTP/1.1 dengan payload JSON
+- **Rust Engine Service** — REST HTTP/1.1 dengan payload JSON, gRPC opsional untuk penggunaan internal
+- **Frontend → Backend** — Next.js API routes sebagai lapisan BFF
 
-### Response Format Standard
+### Standar Format Response
 
-All services return standardized JSON responses:
+Semua layanan mengembalikan response JSON standar:
 
 ```json
 {
@@ -154,43 +154,43 @@ All services return standardized JSON responses:
 }
 ```
 
-This uniform format simplifies frontend consumption and error handling. The `success` boolean enables client-side validation without parsing errors, while `message` provides human-readable context.
+Format seragam ini menyederhanakan konsumsi frontend dan error handling. Boolean `success` memungkinkan validasi sisi client tanpa parsing error, sementara `message` menyediakan konteks yang dapat dibaca manusia.
 
-## Evolutionary Path
+## Jalur Evolusi
 
-Current architecture provides strong foundation. Future enhancements may include:
+Architecture saat ini menyediakan fondasi yang kuat. Peningkatan di masa depan dapat mencakup:
 
-1. **Message Queue (Kafka/RabbitMQ)** — Replace webhook-based outbox for more reliable event delivery
-2. **CQRS Pattern** — Separate read/write models in Java service for complex queries
-3. **eventuate.io** — Database change capture for more robust sync
-4. **GraphQL Federation** — Unified API layer if frontend complexity grows
-5. **Service Mesh** — Istio or Linkerd for advanced traffic management and observability
+1. **Message Queue (Kafka/RabbitMQ)** — Mengganti outbox berbasis webhook untuk pengiriman event yang lebih andal
+2. **CQRS Pattern** — Memisahkan model baca/tulis di layanan Java untuk query kompleks
+3. **eventuate.io** — Database change capture untuk sinkronisasi yang lebih kokoh
+4. **GraphQL Federation** — Lapisan API terpadu jika kompleksitas frontend bertambah
+5. **Service Mesh** — Istio atau Linkerd untuk manajemen trafik dan observabilitas tingkat lanjut
 
-### When to Consider Changes
+### Kapan Mempertimbangkan Perubahan
 
-- **Traffic Growth**: If each service needs different scaling patterns, consider splitting further
-- **Team Growth**: If teams work on different services independently, autonomy increases value
-- **Performance Bottlenecks**: If latency limits growth, evaluate async patterns or caching
-- **Feature Complexity**: If features span services excessively, reconsider service boundaries
+- **Pertumbuhan Trafik**: Jika setiap layanan membutuhkan pattern scaling yang berbeda, pertimbangkan pemisahan lebih lanjut
+- **Pertumbuhan Tim**: Jika tim mengerjakan layanan berbeda secara independen, otonomi meningkatkan nilai
+- **Bottleneck Performa**: Jika latensi membatasi pertumbuhan, evaluasi pattern async atau caching
+- **Kompleksitas Fitur**: Jika fitur terlalu banyak melintasi layanan, pertimbangkan kembali batasan layanan
 
-## Database Separation Rationale
+## Rasional Pemisahan Database
 
-The Core_DB and Engine_DB are completely separate:
+Core_DB dan Engine_DB sepenuhnya terpisah:
 
-- **No Foreign Keys** — Cannot use database-level constraints across services
-- **No SQL Joins** — All cross-context data fetched via API composition
-- **Independent Backups** — Each database can be backed up separately
-- **Scaling Flexibility** — Engine_DB can run on different hardware than Core_DB
+- **Tanpa Foreign Key** — Tidak dapat menggunakan constraint level database antar layanan
+- **Tanpa SQL Join** — Semua data lintas context diambil via komposisi API
+- **Backup Independen** — Setiap database dapat di-backup secara terpisah
+- **Fleksibilitas Scaling** — Engine_DB dapat berjalan di hardware berbeda dari Core_DB
 
-This design forces explicit communication boundaries, making the system more maintainable despite initial complexity. While it requires additional network calls, the benefits of loose coupling and independent deployability far outweigh the cost.
+Desain ini memaksakan batasan komunikasi yang eksplisit, membuat sistem lebih mudah dipelihara meskipun ada kompleksitas awal. Meskipun memerlukan panggilan jaringan tambahan, manfaat loose coupling dan independent deployability jauh melebihi biayanya.
 
-### Database Synchronization
+### Sinkronisasi Database
 
-Data flows between databases through:
+Data mengalir antar database melalui:
 
-1. **Outbox Events** — Java writes events, Rust reads them via webhook
-2. **Shadow Users** — Rust maintains user records mirroring Java state
-3. **Eventual Consistency** — Accept small delays for improved fault tolerance
-4. **Idempotency** — Events include unique IDs for safe retries
+1. **Outbox Events** — Java menulis event, Rust membacanya via webhook
+2. **Shadow Users** — Rust memelihara catatan pengguna yang mencerminkan state Java
+3. **Konsistensi Eventual** — Menerima penundaan kecil untuk peningkatan fault tolerance
+4. **Idempotensi** — Event menyertakan ID unik untuk retry yang aman
 
-This approach aligns with Domain-Driven Design principles and supports the architecture's resilience goals.
+Pendekatan ini selaras dengan prinsip Domain-Driven Design dan mendukung tujuan ketahanan Architecture.

@@ -1,24 +1,24 @@
 ---
-title: Outbox Pattern
-description: Fault-tolerant synchronization to Rust engine via outbox pattern with scheduled retry
+title: pattern Outbox
+description: Sinkronisasi fault-tolerant ke engine Rust melalui pattern outbox dengan retry terjadwal
 ---
 
 
-The outbox pattern ensures reliable synchronization to the Rust gamification engine even when Rust becomes unavailable. Without this pattern, any Rust downtime would cause user registration or quiz submission to fail entirely.
+pattern outbox memastikan sinkronisasi yang andal ke engine gamifikasi Rust bahkan ketika Rust tidak tersedia. Tanpa pattern ini, downtime Rust akan menyebabkan registrasi pengguna atau pengiriman kuis gagal sepenuhnya.
 
-## Problem Statement
+## Pernyataan Masalah
 
-When user registration succeeds but Rust is down:
-- **Without outbox**: User registration fails, user sees error
-- **With outbox**: User registration succeeds, Rust sync scheduled for retry
+Ketika registrasi pengguna berhasil tetapi Rust sedang down:
+- **Tanpa outbox**: Registrasi pengguna gagal, pengguna melihat error
+- **Dengan outbox**: Registrasi pengguna berhasil, sinkronisasi Rust dijadwalkan untuk retry
 
-The system must be resilient to:
-- Rust service downtime
-- Network connectivity issues
-- Retryable HTTP errors (408, 429, 500+)
-- Database connection failures
+Sistem harus tahan terhadap:
+- Downtime layanan Rust
+- Masalah konektivitas jaringan
+- HTTP error yang dapat di-retry (408, 429, 500+)
+- Kegagalan koneksi database
 
-## Outbox Pattern Flow
+## Alur pattern Outbox
 
 ```mermaid
 sequenceDiagram
@@ -37,45 +37,45 @@ sequenceDiagram
     AuthService->>AuthService: Create UserEntity
     AuthService->>AuthService: Save to PostgreSQL
     
-    alt Rust Available
+    alt Rust Tersedia
         AuthService->>RS: POST /api/internal/users/sync
         RS-->>AuthService: 201 Created
-        AuthService-->>UserController: Success
+        AuthService-->>UserController: Berhasil
         UserController-->>Client: 200 OK
-    else Rust Failed
+    else Rust Gagal
         AuthService->>RS: POST /api/internal/users/sync
         RS-->>AuthService: Connection refused / timeout
         AuthService->>OS: recordUserSyncFailure(userId)
         OS->>FSE: INSERT failed_sync_events
         FSE-->>OS: eventId=123
-        AuthService-->>UserController: Success (not failing user)
+        AuthService-->>UserController: Berhasil (tidak menggagalkan pengguna)
         UserController-->>Client: 200 OK
         
-        Note over Client: User unaware of sync failure
+        Note over Client: Pengguna tidak tahu sinkronisasi gagal
     end
 
-    Note over Scheduler: Runs every 5 minutes
+    Note over Scheduler: Berjalan setiap 5 menit
     Scheduler->>Retry: retryFailedFromScheduler()
     Retry->>FSE: SELECT failed events
-    FSE-->>Retry: List of events
+    FSE-->>Retry: Daftar event
     
-    loop Retry attempts (max 5)
+    loop Percobaan retry (maks 5)
         Retry->>RS: POST /api/internal/users/sync
-        alt Success
+        alt Berhasil
             RS-->>Retry: 201 Created
             Retry->>FSE: UPDATE status=DONE
-            FSE-->>Retry: Updated
-        else Still Failed
+            FSE-->>Retry: Diperbarui
+        else Masih Gagal
             RS-->>Retry: Error
             Retry->>FSE: UPDATE retry_count+1, status=FAILED
-            FSE-->>Retry: Updated
+            FSE-->>Retry: Diperbarui
         end
     end
 ```
 
 ## FailedSyncEventEntity
 
-The failed sync events are stored in `failed_sync_events` table:
+Event sinkronisasi yang gagal disimpan di tabel `failed_sync_events`:
 
 ```java
 @Entity
@@ -94,39 +94,39 @@ public class FailedSyncEventEntity {
     @Enumerated(EnumType.STRING)
     private SyncEventStatus status;   // FAILED, PENDING, DONE
     
-    private int retryCount = 0;       // Increment on each retry
+    private int retryCount = 0;       // Ditambah pada setiap retry
     
-    private String lastError;         // Last error message
+    private String lastError;         // Pesan error terakhir
     
-    private Instant nextRetryAt;      // For exponential backoff
+    private Instant nextRetryAt;      // Untuk exponential backoff
     
     private Instant createdAt;
     private Instant updatedAt;
 }
 ```
 
-### SyncEventType Enum
+### Enum SyncEventType
 
 ```java
 public enum SyncEventType {
-    USER_SYNC,    // Sync user data to Rust
-    QUIZ_SYNC     // Quiz attempt sync (future)
+    USER_SYNC,    // Sinkronisasi data pengguna ke Rust
+    QUIZ_SYNC     // Sinkronisasi percobaan kuis (mendatang)
 }
 ```
 
-### SyncEventStatus Enum
+### Enum SyncEventStatus
 
 ```java
 public enum SyncEventStatus {
-    FAILED,  // Sync attempt failed
-    PENDING, // Awaiting retry
-    DONE     // Successfully synced
+    FAILED,  // Percobaan sinkronisasi gagal
+    PENDING, // Menunggu retry
+    DONE     // Berhasil disinkronkan
 }
 ```
 
 ## OutboxService
 
-Records failed sync attempts:
+Mencatat percobaan sinkronisasi yang gagal:
 
 ```java
 @Service
@@ -143,11 +143,11 @@ public class OutboxService {
 }
 ```
 
-Called from `AuthService.syncNewUser()` when Rust sync fails.
+Dipanggil dari `AuthService.syncNewUser()` ketika sinkronisasi Rust gagal.
 
 ## OutboxScheduler
 
-Scheduled job runs every 5 minutes to retry failed events:
+Job terjadwal berjalan setiap 5 menit untuk me-retry event yang gagal:
 
 ```java
 @Configuration
@@ -161,58 +161,58 @@ public class OutboxScheduler {
 }
 ```
 
-Configuration:
-- **Default enabled**: Yes (`matchIfMissing = true`)
-- **Max retry**: Configurable via `outbox.retry.max-attempts` (default: 5)
-- **Cron schedule**: Every 5 minutes (`0 */5 * * * *`)
+Konfigurasi:
+- **Default enabled**: Ya (`matchIfMissing = true`)
+- **Max retry**: Dapat dikonfigurasi melalui `outbox.retry.max-attempts` (default: 5)
+- **Cron schedule**: Setiap 5 menit (`0 */5 * * * *`)
 
 <Callout type="warning">
-The scheduler runs in production by default. To disable, set `outbox.scheduler.enabled=false` in your application properties.
+Scheduler berjalan di production secara default. Untuk menonaktifkan, atur `outbox.scheduler.enabled=false` di application properties Anda.
 </Callout>
 
 ## OutboxRetryService
 
-Core retry logic:
+Logika retry inti:
 
 ```java
 @Service
 public class OutboxRetryService {
     // Public API
     public FailedSyncEventsData listFailedSyncEvents() {
-        // Returns top 100 FAILED/PENDING events
+        // Mengembalikan 100 event FAILED/PENDING teratas
     }
     
     public RetrySummary retryEvents(Collection<Long> eventIds, boolean retryAll) {
-        // Retry specific events or all pending
+        // Me-retry event tertentu atau semua yang pending
     }
     
     public int retryFailedFromScheduler(int maxRetry) {
-        // Called by scheduler, respects maxRetry limit
+        // Dipanggil oleh scheduler, menghormati batas maxRetry
     }
 }
 ```
 
-### Retry Logic
+### Logika Retry
 
-1. Fetch events with status `FAILED` or `PENDING` (max 100)
-2. For each event:
-   - Check `retryCount < maxRetry`
-   - Attempt sync to Rust
-   - On success: `status=DONE`, clear `lastError`
-   - On failure: `retryCount++`, `status=FAILED`, update `lastError`
+1. Mengambil event dengan status `FAILED` atau `PENDING` (maks 100)
+2. Untuk setiap event:
+   - Memeriksa `retryCount < maxRetry`
+   - Mencoba sinkronisasi ke Rust
+   - Jika berhasil: `status=DONE`, hapus `lastError`
+   - Jika gagal: `retryCount++`, `status=FAILED`, perbarui `lastError`
 
-### Admin endpoints
+### Endpoint Admin
 
-| Endpoint | Method | Description |
+| Endpoint | Method | Keterangan |
 |----------|--------|-------------|
-| `/api/v1/admin/failed-sync-events` | GET | List all pending/failed events |
-| `/api/v1/admin/failed-sync-events/retry` | POST | Retry specific events or all |
+| `/api/v1/admin/failed-sync-events` | GET | Daftar semua event pending/failed |
+| `/api/v1/admin/failed-sync-events/retry` | POST | Me-retry event tertentu atau semua |
 
-**Request body for retry:**
+**Request body untuk retry:**
 ```json
 {
-  "event_ids": [1, 2, 3],    // Optional: specific event IDs
-  "retry_all": true          // Optional: retry all events (if event_ids empty)
+  "event_ids": [1, 2, 3],    // Opsional: event ID tertentu
+  "retry_all": true          // Opsional: retry semua event (jika event_ids kosong)
 }
 ```
 
@@ -229,9 +229,9 @@ public class OutboxRetryService {
 }
 ```
 
-## RustEngineClient Interface
+## Interface RustEngineClient
 
-Defines sync client contracts:
+Mendefinisikan kontrak sync client:
 
 ```java
 public interface RustEngineClient {
@@ -241,11 +241,11 @@ public interface RustEngineClient {
 }
 ```
 
-Implementations:
-- **RestClientRustEngineClient**: HTTP/REST client using Spring RestClient
-- **GrpcUserSyncClient**: gRPC client (alternative, future)
+Implementasi:
+- **RestClientRustEngineClient**: HTTP/REST client menggunakan Spring RestClient
+- **GrpcUserSyncClient**: gRPC client (alternatif, mendatang)
 
-### RestClientRustEngineClient Configuration
+### Konfigurasi RestClientRustEngineClient
 
 ```java
 @Component
@@ -256,13 +256,13 @@ public class RestClientRustEngineClient implements RustEngineClient {
         @Value("${rust.engine.base-url:http://localhost:8081}") String baseUrl,
         @Value("${internal.api.key:}") String internalApiKey
     ) {
-        // Configures timeout (2s connect, 3s read)
+        // Mengonfigurasi timeout (2s connect, 3s read)
     }
 }
 ```
 
-**Configuration properties:**
-- `rust.engine.base-url`: Rust engine URL (default: `http://localhost:8081`)
-- `internal.api.key`: API key header for internal endpoints
+**Properti konfigurasi:**
+- `rust.engine.base-url`: URL engine Rust (default: `http://localhost:8081`)
+- `internal.api.key`: Header API key untuk endpoint internal
 
-**Sync endpoint**: `POST /api/internal/users/sync` with `x-api-key` header
+**Endpoint sinkronisasi**: `POST /api/internal/users/sync` dengan header `x-api-key`

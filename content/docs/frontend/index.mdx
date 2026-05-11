@@ -1,15 +1,15 @@
 ---
 title: Frontend
-description: Next.js 16 frontend with BFF pattern — React 19, Tailwind v4, shadcn/ui, and Google OAuth
+description: Frontend Next.js 16 dengan pattern BFF — React 19, Tailwind v4, shadcn/ui, dan Google OAuth
 ---
 
 # Frontend
 
-The Yomu frontend is built with Next.js 16.1.6 and React 19.2.3, utilizing TypeScript, Tailwind CSS v4, and the shadcn/ui component library.
+Frontend Yomu dibangun dengan Next.js 16.1.6 dan React 19.2.3, menggunakan TypeScript, Tailwind CSS v4, dan pustaka komponen shadcn/ui.
 
 ## Architecture
 
-The frontend follows a Backend-for-Frontend (BFF) pattern. All API calls go through Next.js route handlers, which act as proxies to the backend services. The browser never makes direct API calls to Java or Rust backends.
+Frontend mengikuti pattern Backend-for-Frontend (BFF). Semua panggilan API melewati route handler Next.js, yang bertindak sebagai proxy ke layanan backend. Browser tidak pernah melakukan panggilan API langsung ke backend Java atau Rust.
 
 ```mermaid
 sequenceDiagram
@@ -22,44 +22,44 @@ sequenceDiagram
     Next.js->>Browser: Rendered Page or Data
 ```
 
-## Technology Stack
+## Teknologi
 
 - **Framework**: Next.js 16.1.6
 - **React**: 19.2.3
-- **TypeScript**: Type-safe development
-- **Styling**: Tailwind CSS v4 with CSS variables
-- **UI Components**: shadcn/ui (55 components, new-york style)
-- **Icons**: lucide-react
-- **Forms**: React Hook Form + Zod v4
-- **Authentication**: @react-oauth/google for Google OAuth
-- **Notifications**: sonner
-- **Output Mode**: Standalone (for optimized production builds)
+- **TypeScript**: Pengembangan type-safe
+- **Styling**: Tailwind CSS v4 dengan CSS variables
+- **Komponen UI**: shadcn/ui (55 komponen, gaya new-york)
+- **Ikon**: lucide-react
+- **Formulir**: React Hook Form + Zod v4
+- **Autentikasi**: @react-oauth/google untuk Google OAuth
+- **Notifikasi**: sonner
+- **Mode Output**: Standalone (untuk build produksi yang dioptimalkan)
 
-## Route Structure
+## Struktur Rute
 
-| Route | Description | Status |
+| Rute | Deskripsi | Status |
 |-------|-------------|--------|
-| `/auth/*` | Login and register pages | Fully implemented |
-| `/app` | Protected user area | Protected routes |
-| `/admin` | Admin dashboard | Protected routes |
-| `/bacaankuis/` | Reading + quiz experience | Fully implemented |
-| `/forums/` | Discussion pages | Fully implemented |
-| `/dashboard/clans` | Clan management | Empty stub |
-| `/dashboard/missions` | Mission tracking | Empty stub |
-| `/dashboard/achievements` | Achievement showcase | Empty stub |
-| `/dashboard/leaderboard` | Leaderboard display | Empty stub |
-| `/api/v1/*` | BFF proxy routes | Route handlers |
+| `/auth/*` | Halaman login dan registrasi | Sudah diimplementasikan |
+| `/app` | Area pengguna terproteksi | Rute terproteksi |
+| `/admin` | Dashboard admin | Rute terproteksi |
+| `/bacaankuis/` | Pengalaman membaca + kuis | Sudah diimplementasikan |
+| `/forums/` | Halaman diskusi | Sudah diimplementasikan |
+| `/dashboard/clans` | Manajemen klan | Stub kosong |
+| `/dashboard/missions` | Pelacakan misi | Stub kosong |
+| `/dashboard/achievements` | Pameran pencapaian | Stub kosong |
+| `/dashboard/leaderboard` | Tampilan leaderboard | Stub kosong |
+| `/api/v1/*` | Rute proxy BFF | Route handler |
 
-## Key Dependencies
+## Dependensi Utama
 
-- **shadcn/ui**: 55+ pre-built components using new-york design style
-- **lucide-react**: Icon library
-- **@react-oauth/google**: Google OAuth integration
-- **sonner**: Toast notifications
-- **@hookform/resolvers**: Zod validation for forms
-- **zod**: Schema validation
+- **shadcn/ui**: 55+ komponen siap pakai menggunakan gaya desain new-york
+- **lucide-react**: Pustaka ikon
+- **@react-oauth/google**: Integrasi Google OAuth
+- **sonner**: Notifikasi toast
+- **@hookform/resolvers**: Validasi Zod untuk formulir
+- **zod**: Validasi skema
 
-## Documentation Structure
+## Struktur Dokumentasi
 
-- [`bff-auth.mdx`](/docs/frontend/bff-auth) — BFF architecture and authentication flow
-- [`components.mdx`](/docs/frontend/components) — UI component library and custom components
+- [`bff-auth.mdx`](/docs/frontend/bff-auth) — Architecture BFF dan alur autentikasi
+- [`components.mdx`](/docs/frontend/components) — Pustaka komponen UI dan komponen kustom

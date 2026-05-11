@@ -1,32 +1,32 @@
 ---
-title: Deployment Architecture
-description: Production deployment on AWS EC2 with GHCR, blue-green deployment, and full observability stack
+title: Architecture Deployment
+description: Deployment produksi di AWS EC2 dengan GHCR, blue-green deployment, dan stack observabilitas lengkap
 ---
 
 
-## Deployment Target: AWS EC2
+## Target Deployment: AWS EC2
 
-All services run on a single AWS EC2 instance with the following configuration:
+Semua layanan berjalan pada satu instance AWS EC2 dengan konfigurasi berikut:
 
-| Component | Instance Type | CPU | Memory | Storage |
+| Komponen | Tipe Instance | CPU | Memori | Penyimpanan |
 |-----------|---------------|-----|--------|---------|
 | EC2 Instance | t3.xlarge | 4 vCPU | 16 GB | 100 GB (SSD) |
 
 <Callout type="note">
-This architecture can be extended to multiple instances or Kubernetes clusters by replicating the same pattern across nodes. For high availability, deploy across multiple availability zones.
+Architecture ini dapat diperluas ke beberapa instance atau cluster Kubernetes dengan mereplikasi pattern yang sama di seluruh node. Untuk high availability, deploy di beberapa availability zone.
 </Callout>
 
 ## Container Registry: GitHub Container Registry
 
-All Docker images are pushed to GHCR with the following structure:
+Semua Docker image di-push ke GHCR dengan struktur berikut:
 
-| Service | Image Name | Tagging Strategy |
+| Layanan | Nama Image | Strategi Tagging |
 |---------|------------|------------------|
 | Frontend | ghcr.io/yomu/yomu-frontend | `latest`, `v1.0.0`, `sha-<hash>` |
 | Java Core | ghcr.io/yomu/yomu-backend-java | `latest`, `v1.0.0`, `sha-<hash>` |
 | Rust Engine | ghcr.io/yomu/yomu-backend-rust | `latest`, `v1.0.0`, `sha-<hash>` |
 
-### CI/CD Integration
+### Integrasi CI/CD
 
 ```yaml
 # yomu-frontend/.github/workflows/deploy.yml
@@ -57,11 +57,11 @@ jobs:
           tags: ghcr.io/yomu/yomu-frontend:${{ github.sha }}
 ```
 
-## Blue-Green Deployment Strategy
+## Strategi Blue-Green Deployment
 
-Blue-green deployment ensures zero-downtime releases by maintaining two identical environments.
+Blue-green deployment memastikan rilis tanpa downtime dengan memelihara dua environment yang identik.
 
-### Deployment Flow
+### Alur Deployment
 
 ```mermaid
 sequenceDiagram
@@ -75,33 +75,33 @@ sequenceDiagram
     participant RUST_G as Rust Green
     participant FE_G as Frontend Green
 
-    DEPLOY->>EC2: Pull latest images from GHCR
-    EC2->>JAVA_G: Start Java Blue (port 8080)
-    EC2->>RUST_G: Start Rust Blue (port 8081)
-    EC2->>FE_G: Start Frontend Blue (port 3000)
-    DEPLOY->>NGINX: Reload config (Blue=active)
-    NGINX->>JAVA_B: Check /health
-    NGINX->>RUST_B: Check /health
-    NGINX->>FE_B: Check /health
-    DEPLOY->>JAVA_G: Start Java Green (port 8082)
-    DEPLOY->>RUST_G: Start Rust Green (port 8083)
-    DEPLOY->>FE_G: Start Frontend Green (port 3001)
-    DEPLOY->>JAVA_G: Wait for health check
-    DEPLOY->>RUST_G: Wait for health check
-    DEPLOY->>FE_G: Wait for health check
-    DEPLOY->>NGINX: Update config (Green=active)
-    NGINX->>JAVA_G: Route traffic to Green
-    NGINX->>RUST_G: Route traffic to Green
-    NGINX->>FE_G: Route traffic to Green
-    DEPLOY->>JAVA_B: Stop Blue container
-    DEPLOY->>RUST_B: Stop Blue container
-    DEPLOY->>FE_B: Stop Blue container
+    DEPLOY->>EC2: Pull image terbaru dari GHCR
+    EC2->>JAVA_G: Mulai Java Blue (port 8080)
+    EC2->>RUST_G: Mulai Rust Blue (port 8081)
+    EC2->>FE_G: Mulai Frontend Blue (port 3000)
+    DEPLOY->>NGINX: Reload config (Blue=aktif)
+    NGINX->>JAVA_B: Periksa /health
+    NGINX->>RUST_B: Periksa /health
+    NGINX->>FE_B: Periksa /health
+    DEPLOY->>JAVA_G: Mulai Java Green (port 8082)
+    DEPLOY->>RUST_G: Mulai Rust Green (port 8083)
+    DEPLOY->>FE_G: Mulai Frontend Green (port 3001)
+    DEPLOY->>JAVA_G: Tunggu health check
+    DEPLOY->>RUST_G: Tunggu health check
+    DEPLOY->>FE_G: Tunggu health check
+    DEPLOY->>NGINX: Perbarui config (Green=aktif)
+    NGINX->>JAVA_G: Arahkan trafik ke Green
+    NGINX->>RUST_G: Arahkan trafik ke Green
+    NGINX->>FE_G: Arahkan trafik ke Green
+    DEPLOY->>JAVA_B: Hentikan container Blue
+    DEPLOY->>RUST_B: Hentikan container Blue
+    DEPLOY->>FE_B: Hentikan container Blue
 ```
 
-### Configuration Switching
+### Peralihan Konfigurasi
 
 ```nginx
-# nginx-blue.conf (initial active)
+# nginx-blue.conf (aktif awal)
 upstream java_backend {
     server 127.0.0.1:8080;
 }
@@ -112,7 +112,7 @@ upstream frontend {
     server 127.0.0.1:3000;
 }
 
-# nginx-green.conf (target active)
+# nginx-green.conf (aktif target)
 upstream java_backend {
     server 127.0.0.1:8082;
 }
@@ -129,50 +129,50 @@ upstream frontend {
 ```bash
 #!/bin/bash
 # deploy.sh
-# Usage: ./deploy.sh <environment>
+# Penggunaan: ./deploy.sh <environment>
 
 ENV=$1
 TAG=${2:-"latest"}
 
-# Stop and remove existing containers
+# Hentikan dan hapus container yang ada
 docker-compose -f docker-compose-blue.yml down
 
-# Pull new images
+# Pull image baru
 docker-compose -f docker-compose-blue.yml pull
 
-# Start new version (green environment)
+# Mulai versi baru (green environment)
 docker-compose -f docker-compose-blue.yml up -d
 
-# Wait for health checks
+# Tunggu health check
 for SERVICE in java rust frontend; do
     for i in {1..30}; do
         if docker-compose -f docker-compose-blue.yml run --rm "$SERVICE" /health; then
-            echo "$SERVICE is healthy"
+            echo "$SERVICE sehat"
             break
         fi
         sleep 2
     done
 done
 
-# Update NGINX config and reload
-sed -i "s/8080/8082/g" nginx.conf  # Update Java port
-sed -i "s/8081/8083/g" nginx.conf  # Update Rust port
-sed -i "s/3000/3001/g" nginx.conf  # Update Frontend port
+# Perbarui config NGINX dan reload
+sed -i "s/8080/8082/g" nginx.conf  # Perbarui port Java
+sed -i "s/8081/8083/g" nginx.conf  # Perbarui port Rust
+sed -i "s/3000/3001/g" nginx.conf  # Perbarui port Frontend
 
 nginx -s reload
 
-# Clean up old containers
+# Bersihkan container lama
 docker-compose -f docker-compose-blue.yml down
 ```
 
-## Service Port Mapping
+## Pemetaan Port Layanan
 
 | Environment | Frontend | Java Core | Rust Engine |
 |-------------|----------|-----------|-------------|
 | **Production** | `:3000` | `:8080` | `:8081` |
 | **Development** | `:3001` | `:8081` | `:8080` |
 
-### Docker Compose Configuration
+### Konfigurasi Docker Compose
 
 ```yaml
 # docker-compose.yml
@@ -233,9 +233,9 @@ volumes:
   postgres_data:
 ```
 
-## Multi-Stage Docker Builds
+## Multi-Stage Docker Build
 
-### Java Service Dockerfile
+### Dockerfile Layanan Java
 
 ```dockerfile
 # yomu-backend-java/Dockerfile
@@ -256,7 +256,7 @@ HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
 ENTRYPOINT ["java", "-jar", "app.jar"]
 ```
 
-### Rust Service Dockerfile
+### Dockerfile Layanan Rust
 
 ```dockerfile
 # yomu-backend-rust/Dockerfile
@@ -282,7 +282,7 @@ HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
 CMD ["./yomu-backend-rust"]
 ```
 
-### Frontend Dockerfile
+### Dockerfile Frontend
 
 ```dockerfile
 # yomu-frontend/Dockerfile
@@ -307,11 +307,11 @@ HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
 CMD ["npm", "start"]
 ```
 
-## Health Check Endpoints
+## Health Check Endpoint
 
-All services expose a `/health` endpoint for monitoring:
+Semua layanan mengekspos endpoint `/health` untuk monitoring:
 
-### Java Health Check
+### Health Check Java
 
 ```java
 // yomu-backend-java/src/main/java/com/yomu/health/HealthController.java
@@ -327,7 +327,7 @@ public class HealthController {
 }
 ```
 
-### Rust Health Check
+### Health Check Rust
 
 ```rust
 // yomu-backend-rust/src/presentation/http/health.rs
@@ -342,7 +342,7 @@ pub async fn health() -> impl IntoResponse {
 }
 ```
 
-### Frontend Health Check
+### Health Check Frontend
 
 ```typescript
 // yomu-frontend/src/app/health/route.ts
@@ -356,9 +356,9 @@ export async function GET() {
 }
 ```
 
-## Monitoring Stack
+## Stack Monitoring
 
-### Prometheus Configuration
+### Konfigurasi Prometheus
 
 ```yaml
 # prometheus.yml
@@ -382,18 +382,18 @@ scrape_configs:
     metrics_path: '/metrics'
 ```
 
-### Grafana Dashboards
+### Dashboard Grafana
 
-| Dashboard | Purpose | Key Metrics |
+| Dashboard | Tujuan | Metrik Utama |
 |-----------|---------|-------------|
-| System Overview | Host-level metrics | CPU, Memory, Disk IO, Network |
-| Service Health | API service metrics | Request rate, Latency, Error rate |
-| Database Performance | PostgreSQL metrics | Connections, Queries, Cache hits |
-| Redis Metrics | Cache performance | Hit rate, Memory usage, connected_clients |
+| System Overview | Metrik level host | CPU, Memori, Disk IO, Jaringan |
+| Service Health | Metrik layanan API | Request rate, Latensi, Error rate |
+| Database Performance | Metrik PostgreSQL | Koneksi, Query, Cache hits |
+| Redis Metrics | Performa cache | Hit rate, Penggunaan memori, connected_clients |
 | Java GC | JVM garbage collection | GC pause, heap usage, GC count |
-| Rust Memory | Rust process metrics | Memory usage, Thread count |
+| Rust Memory | Metrik proses Rust | Penggunaan memori, Thread count |
 
-### OpenTelemetry (OTel) Configuration
+### Konfigurasi OpenTelemetry (OTel)
 
 ```yaml
 # otel-agent-config.yaml
@@ -420,7 +420,7 @@ service:
       exporters: [logging]
 ```
 
-### Sentry Configuration
+### Konfigurasi Sentry
 
 ```typescript
 // yomu-backend-java/src/main/java/com/yomu/SentryConfig.java
@@ -439,7 +439,7 @@ public class SentryConfig {
 
 ## k6 Load Testing
 
-### Performance Test Script
+### Script Performance Test
 
 ```javascript
 // yomu-backend-java/k6-test.js
@@ -462,18 +462,18 @@ export default function () {
 }
 ```
 
-### Load Testing Commands
+### Perintah Load Testing
 
 ```bash
-# Run performance tests
+# Jalankan performance test
 docker run --rm -v "$PWD:/scripts" grafana/k6 run /scripts/k6-test.js
 
-# Generate HTML report
+# Generate laporan HTML
 docker run --rm -v "$PWD:/scripts" grafana/k6 run \
     -o summary-exec=/scripts/report.json /scripts/k6-test.js
 ```
 
-## Full Architecture Diagram
+## Diagram Architecture Lengkap
 
 ```mermaid
 graph TB
@@ -546,23 +546,23 @@ graph TB
 
 ## Deployment Checklist
 
-- [ ] Verify pull secrets for GHCR
-- [ ] Update `.env.production` with correct values
-- [ ] Run database migrations (`flyway migrate` / `diesel migration run`)
-- [ ] Verify health checks pass for all services
-- [ ] Test NGINX reverse proxy routes
-- [ ] Run smoke tests against production endpoints
-- [ ] Verify Prometheus scrapes all services
-- [ ] Confirm Grafana dashboards display correct data
-- [ ] Validate Sentry error capture is working
-- [ ] Run k6 load test and verify threshold pass
+- [ ] Verifikasi pull secrets untuk GHCR
+- [ ] Perbarui `.env.production` dengan nilai yang benar
+- [ ] Jalankan migrasi database (`flyway migrate` / `diesel migration run`)
+- [ ] Verifikasi health check lulus untuk semua layanan
+- [ ] Uji rute NGINX reverse proxy
+- [ ] Jalankan smoke test terhadap endpoint production
+- [ ] Verifikasi Prometheus melakukan scrape semua layanan
+- [ ] Konfirmasi dashboard Grafana menampilkan data yang benar
+- [ ] Validasi penangkapan error Sentry berfungsi
+- [ ] Jalankan k6 load test dan verifikasi threshold terpenuhi
 
-## Blue-Green Deployment Benefits
+## Manfaat Blue-Green Deployment
 
-| Benefit | Description |
+| Manfaat | Deskripsi |
 |---------|-------------|
-| **Zero Downtime** | Traffic switch happens instantly without stopping services |
-| **Quick Rollback** | If green environment has issues, immediately switch back to blue |
-| **Safe Testing** | New version tested in production-like environment before traffic switch |
-| **Parallel Deployment** | Deploy to green while blue serves production traffic |
-| **Reduced Risk** | Isolated deployment of new version with minimal impact |
+| **Zero Downtime** | Peralihan trafik terjadi seketika tanpa menghentikan layanan |
+| **Quick Rollback** | Jika green environment bermasalah, segera alihkan kembali ke blue |
+| **Safe Testing** | Versi baru diuji di environment mirip produksi sebelum peralihan trafik |
+| **Parallel Deployment** | Deploy ke green sementara blue melayani trafik produksi |
+| **Reduced Risk** | Deployment versi baru yang terisolasi dengan dampak minimal |

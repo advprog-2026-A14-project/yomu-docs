@@ -1,27 +1,27 @@
 ---
-title: Database Schema
-description: PostgreSQL database schema across Java Core DB and Rust Engine DB
+title: Skema Database
+description: Skema database PostgreSQL untuk Java Core DB dan Rust Engine DB
 ---
 
 
-## Two-Database Architecture
+## Architecture Dua Database
 
-Yomu uses **two completely separate PostgreSQL databases** — no shared state between services.
+Yomu menggunakan **dua database PostgreSQL yang sepenuhnya terpisah** — tanpa shared state antar layanan.
 
-| Database | Service | Purpose |
+| Database | Layanan | Tujuan |
 |----------|---------|---------|
-| **Core_DB** | Java Spring Boot | User management, content CRUD, outbox events |
-| **Engine_DB** | Rust Axum | Gamification data, league/clans, achievements |
+| **Core_DB** | Java Spring Boot | Manajemen pengguna, CRUD konten, outbox event |
+| **Engine_DB** | Rust Axum | Data gamifikasi, liga/klan, achievement |
 
 <Callout type="warning">
-Never attempt SQL joins across databases. Always use API calls or event sync for cross-context operations.
+Jangan pernah melakukan SQL join antar database. Selalu gunakan panggilan API atau sinkronisasi event untuk operasi lintas context.
 </Callout>
 
-## Core_DB Schema (Java Service)
+## Skema Core_DB (Layanan Java)
 
-### Users Table
+### Tabel Users
 
-Tracks all registered users with authentication and profile information.
+Melacak semua pengguna terdaftar dengan informasi autentikasi dan profil.
 
 ```sql
 CREATE TABLE users (
@@ -45,9 +45,9 @@ CREATE TRIGGER users_updated_at BEFORE UPDATE ON users
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 ```
 
-### Articles Table
+### Tabel Articles
 
-Stores educational content articles.
+Menyimpan artikel konten edukasi.
 
 ```sql
 CREATE TABLE articles (
@@ -66,9 +66,9 @@ CREATE INDEX idx_articles_author ON articles(author_id);
 CREATE INDEX idx_articles_status ON articles(status);
 ```
 
-### Quizzes Table
+### Tabel Quizzes
 
-Associating quizzes with articles.
+Mengaitkan kuis dengan artikel.
 
 ```sql
 CREATE TABLE quizzes (
@@ -84,9 +84,9 @@ CREATE TABLE quizzes (
 CREATE INDEX idx_quizzes_article ON quizzes(article_id);
 ```
 
-### User Attempts Table
+### Tabel User Attempts
 
-Tracks user completion status for quizzes.
+Melacak status penyelesaian kuis pengguna.
 
 ```sql
 CREATE TABLE user_attempts (
@@ -101,9 +101,9 @@ CREATE INDEX idx_user_attempts_quiz ON user_attempts(kuis_id);
 CREATE INDEX idx_user_attempts_user ON user_attempts(user_id);
 ```
 
-### Comments Table
+### Tabel Comments
 
-Supports hierarchical comment threads with reply functionality.
+Mendukung thread komentar hierarkis dengan fungsionalitas balasan.
 
 ```sql
 CREATE TABLE comments (
@@ -124,9 +124,9 @@ CREATE INDEX idx_comments_parent ON comments(parent_comment_id) WHERE parent_com
 CREATE INDEX idx_comments_created ON comments(created_at);
 ```
 
-### Comment Reactions Table
+### Tabel Comment Reactions
 
-Tracks upvote/downvote reactions to comments.
+Melacak reaksi upvote/downvote pada komentar.
 
 ```sql
 CREATE TABLE comment_reactions (
@@ -142,9 +142,9 @@ CREATE INDEX idx_comment_reactions_comment ON comment_reactions(comment_id);
 CREATE INDEX idx_comment_reactions_user ON comment_reactions(user_id);
 ```
 
-### Failed Sync Events Table
+### Tabel Failed Sync Events
 
-Outbox pattern implementation for reliable event delivery to Rust service.
+Implementasi outbox pattern untuk pengiriman event yang andal ke layanan Rust.
 
 ```sql
 CREATE TYPE event_type AS ENUM (
@@ -184,11 +184,11 @@ CREATE TRIGGER failed_events_updated
     FOR EACH ROW EXECUTE FUNCTION process_failed_events();
 ```
 
-## Engine_DB Schema (Rust Service)
+## Skema Engine_DB (Layanan Rust)
 
-### Engine Users Table (Shadow Users)
+### Tabel Engine Users (Shadow Users)
 
-Mirror user data from Core_DB with gamification-specific fields.
+Mencerminkan data pengguna dari Core_DB dengan field khusus gamifikasi.
 
 ```sql
 CREATE TABLE engine_users (
@@ -203,9 +203,9 @@ CREATE INDEX idx_engine_users_level ON engine_users(level);
 CREATE INDEX idx_engine_users_score ON engine_users(total_score);
 ```
 
-### Clans Table
+### Tabel Clans
 
-Tracks user groups (classes/teams) with score tracking.
+Melacak grup pengguna (kelas/tim) dengan pelacakan skor.
 
 ```sql
 CREATE TABLE clans (
@@ -223,9 +223,9 @@ CREATE TABLE clans (
 CREATE UNIQUE INDEX idx_clans_name ON clans(name);
 ```
 
-### Clan Members Table
+### Tabel Clan Members
 
-Many-to-many relationship between users and clans.
+Relasi many-to-many antara pengguna dan klan.
 
 ```sql
 CREATE TABLE clan_members (
@@ -240,9 +240,9 @@ CREATE INDEX idx_clan_members_user ON clan_members(user_id);
 CREATE INDEX idx_clan_members_role ON clan_members(role);
 ```
 
-### Clan Buffs Table
+### Tabel Clan Buffs
 
-Temporary buffs that increase clan score accumulation.
+Buff sementara yang meningkatkan akumulasi skor klan.
 
 ```sql
 CREATE TABLE clan_buffs (
@@ -259,9 +259,9 @@ CREATE INDEX idx_clan_buffs_clan ON clan_buffs(clan_id);
 CREATE INDEX idx_clan_buffs_active ON clan_buffs(clan_id, is_active);
 ```
 
-### Achievements Table
+### Tabel Achievements
 
-Gamification milestones that users can unlock.
+Milestone gamifikasi yang dapat dibuka oleh pengguna.
 
 ```sql
 CREATE TYPE achievement_type AS ENUM ('READ_ARTICLE', 'COMPLETE_QUIZ', 'CLIMB_LEADERBOARD', 'JOIN_CLAN');
@@ -281,9 +281,9 @@ CREATE UNIQUE INDEX idx_achievements_name ON achievements(name);
 CREATE INDEX idx_achievements_type ON achievements(achievement_type);
 ```
 
-### User Achievements Table
+### Tabel User Achievements
 
-Tracks individual user progress toward achievements.
+Melacak progres individu pengguna menuju achievement.
 
 ```sql
 CREATE TABLE user_achievements (
@@ -302,9 +302,9 @@ CREATE INDEX idx_user_achievements_achievement ON user_achievements(achievement_
 CREATE INDEX idx_user_achievements_completed ON user_achievements(user_id) WHERE is_completed = true;
 ```
 
-### Daily Missions Table
+### Tabel Daily Missions
 
-Daily gamification tasks with changing targets.
+Tugas gamifikasi harian dengan target yang berubah.
 
 ```sql
 CREATE TABLE daily_missions (
@@ -322,9 +322,9 @@ CREATE UNIQUE INDEX idx_daily_missions_date ON daily_missions(date);
 CREATE INDEX idx_daily_missions_expires ON daily_missions(expires_at);
 ```
 
-### User Missions Table
+### Tabel User Missions
 
-Tracks individual mission progress.
+Melacak progres misi individu.
 
 ```sql
 CREATE TABLE user_missions (
@@ -342,9 +342,9 @@ CREATE INDEX idx_user_missions_mission ON user_missions(mission_id);
 CREATE INDEX idx_user_missions_unclaimed ON user_missions(user_id) WHERE is_claimed = false;
 ```
 
-### Quiz History Table
+### Tabel Quiz History
 
-Stores completed quiz attempts for gamification scoring.
+Menyimpan upaya kuis yang telah selesai untuk penilaian gamifikasi.
 
 ```sql
 CREATE TABLE quiz_history (
@@ -361,19 +361,19 @@ CREATE INDEX idx_quiz_history_date ON quiz_history(completed_at);
 CREATE INDEX idx_quiz_history_user_date ON quiz_history(user_id, completed_at DESC);
 ```
 
-## Database Relationships Diagram
+## Diagram Relasi Database
 
 ```mermaid
 erDiagram
     %% -- Core_DB (Java Spring Boot) --
-    users ||--o{ articles : authors
-    users ||--o{ comments : posts
-    users ||--o{ comment_reactions : reacts
-    users ||--o{ user_attempts : takes
-    articles ||--o{ quizzes : contains
-    articles ||--o{ comments : hosts
-    comments ||--o{ comments : replies_to
-    comments ||--o{ comment_reactions : receives
+    users ||--o{ articles : menulis
+    users ||--o{ comments : memposting
+    users ||--o{ comment_reactions : memberi reaksi
+    users ||--o{ user_attempts : mengerjakan
+    articles ||--o{ quizzes : berisi
+    articles ||--o{ comments : menampung
+    comments ||--o{ comments : membalas
+    comments ||--o{ comment_reactions : menerima
 
     users {
         UUID user_id PK "gen_random_uuid()"
@@ -449,15 +449,15 @@ erDiagram
     }
 
     %% -- Engine_DB (Rust Axum) --
-    engine_users ||--o{ quiz_history : taken
-    engine_users ||--o{ user_achievements : earned
-    engine_users ||--o{ user_missions : completes
-    engine_users ||--o{ clan_members : joins
-    clans ||--o{ clan_members : includes
-    clans ||--o{ clan_buffs : grants
-    clans ||--|{ engine_users : led_by
-    achievements ||--o{ user_achievements : tracked
-    daily_missions ||--o{ user_missions : assigned
+    engine_users ||--o{ quiz_history : mengerjakan
+    engine_users ||--o{ user_achievements : memperoleh
+    engine_users ||--o{ user_missions : menyelesaikan
+    engine_users ||--o{ clan_members : bergabung
+    clans ||--o{ clan_members : mencakup
+    clans ||--o{ clan_buffs : memberikan
+    clans ||--|{ engine_users : dipimpin_oleh
+    achievements ||--o{ user_achievements : dilacak
+    daily_missions ||--o{ user_missions : ditugaskan
 
     engine_users {
         UUID user_id PK
@@ -547,25 +547,25 @@ erDiagram
     }
 ```
 
-## Sequences and Indexes
+## Sequences dan Indexes
 
-### Common Index Patterns
+### pattern Index Umum
 
 ```sql
--- Composite indexes for common query patterns
+-- Composite indexes untuk pattern query umum
 CREATE INDEX idx_user_attempts_user_quiz ON user_attempts(user_id, kuis_id);
 CREATE INDEX idx_comment_reactions_comment_user ON comment_reactions(comment_id, user_id);
 CREATE INDEX idx_clan_members_clan_user ON clan_members(clan_id, user_id);
 
--- Time-based indexes for analytics
+-- Index berbasis waktu untuk analytics
 CREATE INDEX idx_quiz_history_user_time ON quiz_history(user_id, completed_at DESC);
 CREATE INDEX idx_user_missions_user_date ON user_missions(user_id, created_at DESC);
 ```
 
-### Triggers for Data Consistency
+### Trigger untuk Konsistensi Data
 
 ```sql
--- Update clan total score when member score changes
+-- Perbarui total skor klan saat skor anggota berubah
 CREATE OR REPLACE FUNCTION update_clan_score()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -579,7 +579,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Update user level based on score thresholds
+-- Perbarui level pengguna berdasarkan threshold skor
 CREATE OR REPLACE FUNCTION update_user_level()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -589,8 +589,8 @@ END;
 $$ LANGUAGE plpgsql;
 ```
 
-## Schema Migration Strategy
+## Strategi Migrasi Skema
 
-- **Java Service**: Flyway or Liquibase migrations in `src/main/resources/db/migration/`
-- **Rust Service**: Diesel migrations or manual SQL scripts in `migrations/`
-- **No cross-database migrations** — each service manages its own schema
+- **Layanan Java**: Migrasi Flyway atau Liquibase di `src/main/resources/db/migration/`
+- **Layanan Rust**: Migrasi Diesel atau script SQL manual di `migrations/`
+- **Tanpa migrasi lintas database** — setiap layanan mengelola skemanya sendiri

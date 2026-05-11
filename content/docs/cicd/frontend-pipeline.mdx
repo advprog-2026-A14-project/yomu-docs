@@ -1,10 +1,10 @@
 ---
 title: Frontend Pipeline
-description: Frontend CI/CD — ESLint, Next.js build, and multi-arch Docker with health checks
+description: CI/CD Frontend — ESLint, Next.js build, dan multi-arch Docker dengan health check
 ---
 
 
-The Next.js frontend uses React 19.2.3 with Tailwind CSS and shadcn/ui components. The pipeline runs ESLint validation, Next.js build, and multi-arch Docker image building. Currently lacks E2E testing framework.
+Frontend Next.js menggunakan React 19.2.3 dengan Tailwind CSS dan komponen shadcn/ui. Pipeline menjalankan validasi ESLint, build Next.js, dan pembuatan Docker image multi-arch. Saat ini belum memiliki E2E testing framework.
 
 ```mermaid
 flowchart TD
@@ -35,10 +35,10 @@ flowchart TD
 
 <Cards>
 <Card title="ci.yml" icon="play">
-Node.js 20 setup, npm ci, ESLint, Next.js build. Runs on push/PR to main branch.
+Setup Node.js 20, npm ci, ESLint, Next.js build. Berjalan pada push/PR ke branch main.
 </Card>
 <Card title="release.yml" icon="package">
-Three-stage pipeline: Docker build → lint&build → health check. Pushes multi-arch to GHCR.
+Pipeline tiga tahap: Docker build → lint&build → health check. Push multi-arch ke GHCR.
 </Card>
 </Cards>
 
@@ -46,13 +46,13 @@ Three-stage pipeline: Docker build → lint&build → health check. Pushes multi
 
 <Cards>
 <Card title="ESLint" icon="linters">
-ESLint only (no test framework). Lints src/app, src/components, src/features. Blocks build on lint errors.
+ESLint saja (tanpa test framework). Lint pada src/app, src/components, src/features. Mem-block build pada lint errors.
 </Card>
 <Card title="Next.js Build" icon="build">
-next build with standalone output mode. Validates build configuration and production readiness.
+next build dengan mode standalone output. Memvalidasi konfigurasi build dan kesiapan produksi.
 </Card>
 <Card title="Docker Health Check" icon="checkup">
-Container starts, checks /health endpoint, verifies response 200 OK. Ensures production readiness.
+Container starts, memeriksa endpoint /health, memverifikasi response 200 OK. Memastikan kesiapan produksi.
 </Card>
 </Cards>
 
@@ -60,8 +60,8 @@ Container starts, checks /health endpoint, verifies response 200 OK. Ensures pro
 
 | Tool | Version | Purpose |
 |------|---------|---------|
-| Node.js | 20 | Runtime for CI |
-| Node.js | 24-slim | Runtime for Docker |
+| Node.js | 20 | Runtime untuk CI |
+| Node.js | 24-slim | Runtime untuk Docker |
 | Next.js | 16.1.6 | Framework |
 | React | 19.2.3 | UI library |
 | Tailwind CSS | Latest | Styling |
@@ -74,13 +74,13 @@ Container starts, checks /health endpoint, verifies response 200 OK. Ensures pro
 
 <Cards>
 <Card title="Setup" icon="setup">
-Checks out code, sets up Node.js 20, runs npm ci for deterministic builds.
+Meng-checkout kode, setup Node.js 20, menjalankan npm ci untuk build deterministik.
 </Card>
 <Card title="Lint" icon="book">
-Runs ESLint on src/app, src/components, src/features. ESLint config in .eslintrc.json.
+Menjalankan ESLint pada src/app, src/components, src/features. Konfigurasi ESLint di .eslintrc.json.
 </Card>
 <Card title="Build" icon="build">
-Runs next build with standalone output mode. Produces `/.next/standalone` directory.
+Menjalankan next build dengan mode standalone output. Menghasilkan direktori `/.next/standalone`.
 </Card>
 </Cards>
 
@@ -88,13 +88,13 @@ Runs next build with standalone output mode. Produces `/.next/standalone` direct
 
 <Cards>
 <Card title="Build" icon="package">
-Docker buildx build with --platform linux/amd64,linux/arm64. Tags image with version.
+Docker buildx build dengan --platform linux/amd64,linux/arm64. Men-tag image dengan version.
 </Card>
 <Card title="Lint & Build" icon="checklist">
-Runs lint and Next.js build inside container. Ensures build works in production-like environment.
+Menjalankan lint dan Next.js build di dalam container. Memastikan build berfungsi di environment mirip produksi.
 </Card>
 <Card title="Test Image" icon="test">
-Container starts, waits for health check endpoint. Verifies /health returns 200 OK.
+Container starts, menunggu health check endpoint. Memverifikasi /health mengembalikan 200 OK.
 </Card>
 </Cards>
 
@@ -107,22 +107,22 @@ Container starts, waits for health check endpoint. Verifies /health returns 200 
 # Stage 3: runner (node:24-slim) - runtime with non-root user
 ```
 
-- Uses node:24-slim final image (minimal attack surface)
-- Non-root user (node) for security
-- Standalone output mode for clean deployment
-- Health check endpoint configured in Next.js config
+- Menggunakan image final node:24-slim (minimal attack surface)
+- Non-root user (node) untuk keamanan
+- Mode standalone output untuk deployment yang bersih
+- Health check endpoint dikonfigurasi di Next.js config
 
-## Current Limitations
+## Keterbatasan Saat Ini
 
 <Cards>
 <Card title="No Test Framework" icon="x">
-No test framework configured. No Jest, no Vitest, no E2E tests. CI only runs lint and build.
+Tidak ada test framework yang dikonfigurasi. Tidak ada Jest, Vitest, atau E2E tests. CI hanya menjalankan lint dan build.
 </Card>
 <Card title="No E2E Tests" icon="browser">
-No Playwright or Cypress tests. No visual regression testing. Future enhancement recommended.
+Tidak ada Playwright atau Cypress tests. Tidak ada visual regression testing. Enhancement di masa depan direkomendasikan.
 </Card>
 <Card title="Minimal Validation" icon="shield">
-CI validates code quality (ESLint) and build success only. No runtime testing.
+CI hanya memvalidasi kualitas kode (ESLint) dan keberhasilan build. Tidak ada runtime testing.
 </Card>
 </Cards>
 
@@ -130,13 +130,13 @@ CI validates code quality (ESLint) and build success only. No runtime testing.
 
 <Cards>
 <Card title="Playwright E2E Tests" icon="test">
-Add Playwright tests for critical user flows. Test authentication, dashboard, leaderboard pages.
+Menambahkan Playwright tests untuk alur pengguna kritis. Menguji authentication, dashboard, halaman leaderboard.
 </Card>
 <Card title="Visual Regression" icon="eye">
-Add Storybook Chromatic or Playwright visual diff. Catch UI regressions before deployment.
+Menambahkan Storybook Chromatic atau Playwright visual diff. Mendeteksi UI regressions sebelum deployment.
 </Card>
 <Card title="VitePress Docs" icon="docs">
-Add VitePress for internal documentation site. Generate API docs from code.
+Menambahkan VitePress untuk situs dokumentasi internal. Membuat API docs dari kode.
 </Card>
 </Cards>
 
@@ -144,9 +144,9 @@ Add VitePress for internal documentation site. Generate API docs from code.
 
 <Cards>
 <Card title="/health" icon="checkup">
-Returns 200 OK when container is healthy. Checks database connection, Redis connection, and service status.
+Mengembalikan 200 OK saat container sehat. Memeriksa koneksi database, koneksi Redis, dan status service.
 </Card>
 <Card title="Config" icon="settings">
-Configured in `next.config.js` with standalone output mode. Health check integrated into Dockerfile.
+Dikonfigurasi di `next.config.js` dengan mode standalone output. Health check terintegrasi ke dalam Dockerfile.
 </Card>
 </Cards>

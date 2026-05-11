@@ -5,7 +5,7 @@ description: Daftar istilah teknis dan domain-specific yang digunakan di seluruh
 
 # Glosarium Yomu
 
-Halaman ini merangkum istilah-istilah teknis, arsitektural, dan domain-specific yang muncul di seluruh dokumentasi Yomu. Gunakan sebagai referensi cepat ketika menemukan terminologi yang tidak familiar.
+Halaman ini merangkum istilah-istilah teknis, Architectureal, dan domain-specific yang muncul di seluruh dokumentasi Yomu. Gunakan sebagai referensi cepat ketika menemukan terminologi yang tidak familiar.
 
 ---
 
@@ -15,7 +15,7 @@ Halaman ini merangkum istilah-istilah teknis, arsitektural, dan domain-specific 
 Milestone gamifikasi yang dapat diunlock oleh pengguna setelah memenuhi kriteria tertentu (misalnya menyelesaikan 100 kuis). Setiap achievement memiliki tipe (Common, Rare, Epic, Legendary), poin reward, dan target milestone.
 
 ### API Composition
-Pola di mana Next.js BFF menggabungkan data dari multiple backend services (Java + Rust) menjadi satu response unified. Frontend tidak perlu membuat multiple request ke backend.
+pattern di mana Next.js BFF menggabungkan data dari multiple backend services (Java + Rust) menjadi satu response unified. Frontend tidak perlu membuat multiple request ke backend.
 
 ### Async-Trait
 Crate Rust yang memungkinkan definisi async method di dalam trait. Digunakan di Rust backend untuk repository traits seperti `ClanRepository` dan `AchievementRepository`.
@@ -31,7 +31,7 @@ Web framework Rust yang digunakan di Yomu Engine Service. Dibangun di atas Tower
 Modul Java legacy untuk artikel dan kuis. Controller-nya (`BacaanKuisController`) telah di-mark @Deprecated; gunakan `ArticleController` dan `QuizController` sebagai pengganti.
 
 ### Backend-for-Frontend (BFF)
-Pola arsitektur di mana Next.js API routes berfungsi sebagai perantara antara browser dan backend services. Frontend tidak pernah memanggil backend langsung — semua request melewati route handlers Next.js yang mengelola autentikasi cookies, aggregasi data, dan transformasi response.
+pattern Architecture di mana Next.js API routes berfungsi sebagai perantara antara browser dan backend services. Frontend tidak pernah memanggil backend langsung — semua request melewati route handlers Next.js yang mengelola autentikasi cookies, aggregasi data, dan transformasi response.
 
 ### Blue-Green Deployment
 Strategi deployment zero-downtime di mana dua environment identik (blue dan green) berjalan bersamaan. Traffic dialihkan dari blue ke green setelah green diverifikasi sehat, memungkinkan rollback instan jika terjadi masalah.
@@ -56,7 +56,7 @@ Komponen Fumadocs UI untuk menampilkan grid kartu navigasi atau informasi. Digun
 Continuous Integration / Continuous Deployment. Pipeline GitHub Actions yang menjalankan linting, testing, security audit, build Docker image, dan deployment otomatis untuk setiap subproject (Java, Rust, Frontend).
 
 ### Clean Architecture
-Arsitektur yang memisahkan domain logic dari infrastructure dan presentation. Yomu **menerapkannya secara ketat di Rust** dengan 4 layer: Domain → Application → Infrastructure → Presentation. Java menggunakan Layered Architecture konvensional Spring Boot, bukan Clean Architecture.
+Architecture yang memisahkan domain logic dari infrastructure dan presentation. Yomu **menerapkannya secara ketat di Rust** dengan 4 layer: Domain → Application → Infrastructure → Presentation. Java menggunakan Layered Architecture konvensional Spring Boot, bukan Clean Architecture.
 
 ### Clan
 Kelompok/team pengguna dalam sistem gamifikasi. Clan memiliki tier (Bronze, Silver, Gold, Platinum, Diamond), total score, leader, dan member. Clan berkompetisi di leaderboard melalui Redis sorted sets.
@@ -68,7 +68,7 @@ Relasi many-to-many antara user dan clan. Setiap member memiliki role (`LEADER`,
 Database PostgreSQL milik Java Spring Boot service. Menyimpan users, articles, quizzes, comments, reactions, dan outbox events. Tidak ada shared state dengan Engine_DB.
 
 ### CQRS (Command Query Responsibility Segregation)
-Pola arsitektur opsional yang memisahkan model write dan read. Disediakan di roadmap evolusioner Yomu untuk menangani query kompleks di masa depan tanpa membebani model transaksional.
+pattern Architecture opsional yang memisahkan model write dan read. Disediakan di roadmap evolusioner Yomu untuk menangani query kompleks di masa depan tanpa membebani model transaksional.
 
 ---
 
@@ -157,7 +157,7 @@ Token autentikasi stateless yang dikirimkan via httpOnly cookies (`yomu_access_t
 ## L
 
 ### Layered Architecture
-Arsitektur konvensional Spring Boot: Controller → Service → Repository. Yomu Java menggunakan pattern ini, **bukan** Hexagonal/Clean Architecture. Java layer terintegrasi erat dengan Spring DI, JPA/Hibernate, dan MVC framework.
+Architecture konvensional Spring Boot: Controller → Service → Repository. Yomu Java menggunakan pattern ini, **bukan** Hexagonal/Clean Architecture. Java layer terintegrasi erat dengan Spring DI, JPA/Hibernate, dan MVC framework.
 
 ### Leaderboard
 Ranking real-time clan berdasarkan total score. Diimplementasikan dengan Redis sorted sets (`ZADD`, `ZREVRANGE`, `ZINCRBY`) untuk sub-millisecond latency. Tier-based leaderboards terpisah: Bronze, Silver, Gold, Diamond, plus global rank.
@@ -170,7 +170,7 @@ Bounded context Rust yang menangani clan lifecycle, membership management, scori
 ## M
 
 ### Mermaid
-Library diagram rendering yang terintegrasi dengan Fumadocs. Yomu menggunakan Mermaid untuk sequence diagrams (alur request), flowcharts (arsitektur), dan ER diagrams (database schema). Rendered client-side di browser.
+Library diagram rendering yang terintegrasi dengan Fumadocs. Yomu menggunakan Mermaid untuk sequence diagrams (alur request), flowcharts (Architecture), dan ER diagrams (database schema). Rendered client-side di browser.
 
 ### Mockall
 Crate Rust untuk mocking trait implementations dalam unit test. Digunakan untuk mock repository traits (`MockClanRepository`, `MockAchievementRepository`) sehingga use cases dapat diuji tanpa database nyata.
@@ -192,7 +192,7 @@ Test runner Rust dengan parallel execution. Yomu menggunakan nextest untuk menja
 Framework React untuk frontend dan BFF layer. Yomu menggunakan Next.js 16.2.4 dengan App Router, Server Components, API Routes, dan standalone output mode untuk Docker deployment.
 
 ### No Shared State
-Prinsip arsitektural Yomu di mana setiap service memiliki database sendiri. Tidak ada cross-database queries, tidak ada shared cache, dan tidak ada distributed transactions. Semua pertukaran data melalui REST API atau event sync.
+Prinsip Architectureal Yomu di mana setiap service memiliki database sendiri. Tidak ada cross-database queries, tidak ada shared cache, dan tidak ada distributed transactions. Semua pertukaran data melalui REST API atau event sync.
 
 ---
 
@@ -205,7 +205,7 @@ Protokol autentikasi pihak ketiga. Yomu mendukung Google One Tap login melalui `
 Standard observability untuk distributed tracing. Disediakan di roadmap Yomu untuk tracking request latency dan distributed tracing across Java, Rust, dan Next.js services.
 
 ### Outbox Pattern
-Pola message reliability di mana Java menulis business data dan outbox event dalam satu database transaction. Outbox reader (background job) polling tabel `failed_sync_events` dan mengirim events ke Rust via HTTP webhook dengan exponential backoff retry.
+pattern message reliability di mana Java menulis business data dan outbox event dalam satu database transaction. Outbox reader (background job) polling tabel `failed_sync_events` dan mengirim events ke Rust via HTTP webhook dengan exponential backoff retry.
 
 ### OWASP Dependency-Check
 Security scanning tool untuk Java dependencies. Mendeteksi known vulnerabilities (CVE) di library Java. Yomu mengkonfigurasi threshold `failBuildOnCVSS = 9.0` — build gagal jika vulnerability critical ditemukan.
@@ -220,7 +220,7 @@ Role user default dalam sistem Yomu. Setelah login berhasil, user dengan role `P
 Static code analysis tool untuk Java. Yomu menggunakan PMD 7.0.0 dengan rules priority 5 untuk mendeteksi dead code, empty catch blocks, code smells, dan anti-patterns.
 
 ### Polyglot Architecture
-Arsitektur yang menggunakan multiple programming languages untuk different services. Yomu adalah polyglot: Java untuk auth/content, Rust untuk gamification, Next.js/React untuk frontend, PostgreSQL untuk data persistence, Redis untuk caching/leaderboard.
+Architecture yang menggunakan multiple programming languages untuk different services. Yomu adalah polyglot: Java untuk auth/content, Rust untuk gamification, Next.js/React untuk frontend, PostgreSQL untuk data persistence, Redis untuk caching/leaderboard.
 
 ### Ports & Adapters
 Lihat: **Hexagonal Architecture**
@@ -242,7 +242,7 @@ In-memory data store yang digunakan untuk leaderboard (sorted sets), caching use
 Struktur data Redis untuk leaderboard: `ZADD` (add/update score), `ZINCRBY` (increment score atomically), `ZREVRANGE` (get top N by rank), `ZREVRANK` (get rank of specific member). Ideal untuk real-time ranking dengan sub-millisecond latency.
 
 ### Repository Pattern
-Pola yang memisahkan data access logic dari business logic melalui interface. Di Rust: traits (`ClanRepository`, `AchievementRepository`). Di Java: interfaces dengan Spring Data JPA/Hibernate implementations.
+pattern yang memisahkan data access logic dari business logic melalui interface. Di Rust: traits (`ClanRepository`, `AchievementRepository`). Di Java: interfaces dengan Spring Data JPA/Hibernate implementations.
 
 ### Response Wrapper Format
 Format JSON uniform di semua Yomu APIs:
@@ -277,7 +277,7 @@ Framework Java yang digunakan untuk Core Service. Yomu menggunakan Spring Boot 4
 Modul keamanan Spring Boot untuk authentication dan authorization. Yomu menggunakan Spring Security dengan JWT token validation, OAuth2 Google login integration, dan API key middleware untuk internal service-to-service calls.
 
 ### Strategy Pattern
-Pola yang memungkinkan pemilihan algoritma pada runtime. Contoh di Yomu: `ReactionStrategy` dengan implementasi `UpvoteReactionStrategy` dan `DownvoteReactionStrategy`. Ditambahkan tanpa mengubah kode existing.
+pattern yang memungkinkan pemilihan algoritma pada runtime. Contoh di Yomu: `ReactionStrategy` dengan implementasi `UpvoteReactionStrategy` dan `DownvoteReactionStrategy`. Ditambahkan tanpa mengubah kode existing.
 
 ### Swagger / OpenAPI
 Spec untuk REST API documentation. Yomu Rust menggunakan `utoipa` untuk auto-generate OpenAPI spec di endpoint `/api-docs/openapi.json`. Java menggunakan SpringDoc OpenAPI.
@@ -309,7 +309,7 @@ Abstraction library untuk middleware stack di Rust. Axum dibangun di atas Tower,
 ## U
 
 ### Use Case / Interactor Pattern
-Pola yang mengisolasi business logic ke dalam class/function tunggal dengan single responsibility. Contoh: `SyncQuizGamificationUseCase` menangani quiz completion → achievement check → mission update → point award. Di Java: `@Service` class. Di Rust: struct dengan generic repository parameters.
+pattern yang mengisolasi business logic ke dalam class/function tunggal dengan single responsibility. Contoh: `SyncQuizGamificationUseCase` menangani quiz completion → achievement check → mission update → point award. Di Java: `@Service` class. Di Rust: struct dengan generic repository parameters.
 
 ### User Sync
 Bounded context untuk two-way synchronization antara Java Core_DB dan Rust Engine_DB. Java menulis outbox events; Rust membaca dan membuat shadow users. Dual interface: REST webhook untuk outbox, gRPC untuk low-latency sync.

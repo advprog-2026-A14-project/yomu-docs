@@ -1,25 +1,25 @@
 ---
 title: Design Patterns
-description: Key design patterns used throughout the Yomu codebase and why
+description: pattern desain utama yang digunakan di seluruh codebase Yomu dan alasannya
 ---
 
 
 ## Repository Pattern
 
-### Where
+### Lokasi
 
-- **Rust**: All modules (`gamification`, `league`, `user_sync`) have `domain/repositories.rs`
+- **Rust**: Semua module (`gamification`, `league`, `user_sync`) memiliki `domain/repositories.rs`
 - **Java**: `src/main/java/yomu/auth/repository/`, `src/main/java/yomu/outbox/repository/`
 
-### Why This Pattern
+### Mengapa pattern Ini
 
-The repository pattern abstracts data access behind an interface, enabling:
+Repository pattern mengabstraksi akses data di balik sebuah interface, memungkinkan:
 
-| Benefit | Explanation |
+| Benefit | Penjelasan |
 |---------|-------------|
-| Testability | Mock repositories for unit tests (no real DB) |
-| Flexibility | Switch databases or add caching without changing business logic |
-| Separation of Concerns | Domain layer doesn't know about SQL or ORMs |
+| Testability | Mock repositories untuk unit test (tanpa DB nyata) |
+| Flexibility | Ganti database atau tambahkan cache tanpa mengubah business logic |
+| Separation of Concerns | Domain layer tidak tahu tentang SQL atau ORM |
 
 ### Rust Code Example
 
@@ -140,21 +140,21 @@ public class ClanRepositoryImpl implements ClanRepository {
 
 ## Use Case / Interactor Pattern
 
-### Where
+### Lokasi
 
-- **Rust**: `application/use_cases/` in each module
+- **Rust**: `application/use_cases/` di setiap module
 - **Java**: `src/main/java/yomu/auth/application/`, `src/main/java/yomu/outbox/application/`
 
-### Why This Pattern
+### Mengapa pattern Ini
 
-The use case pattern isolates business logic:
+Use case pattern mengisolasi business logic:
 
-| Benefit | Explanation |
+| Benefit | Penjelasan |
 |---------|-------------|
-| Single Responsibility | Each use case has one reason to change |
-| Testability | Business logic testable without HTTP or DB |
-| Composition | Use cases can be composed for complex workflows |
-| Separation | Domain layer stays pure (no HTTP or DB dependencies) |
+| Single Responsibility | Setiap use case memiliki satu alasan untuk berubah |
+| Testability | Business logic dapat diuji tanpa HTTP atau DB |
+| Composition | Use cases dapat dikomposisikan untuk workflow kompleks |
+| Separation | Domain layer tetap murni (tanpa dependensi HTTP atau DB) |
 
 ### Rust Code Example
 
@@ -304,19 +304,19 @@ public class ScoreRepositoryImpl implements ScoreRepository {
 
 ## Factory Pattern
 
-### Where
+### Lokasi
 
-- **Rust**: `domain/entities/` — constructors like `Clan::new()`, `Clan::with_id()`
+- **Rust**: `domain/entities/` — constructor seperti `Clan::new()`, `Clan::with_id()`
 
-### Why This Pattern
+### Mengapa pattern Ini
 
-The factory pattern encapsulates creation logic:
+Factory pattern mengenkapsulasi logic pembuatan:
 
-| Benefit | Explanation |
+| Benefit | Penjelasan |
 |---------|-------------|
-| Validation | Enforce invariants at creation time |
-| Centralization | Single source of truth for object creation |
-| Testability | Mock factories for testing |
+| Validation | Memastikan invariants pada saat pembuatan |
+| Centralization | Single source of truth untuk pembuatan objek |
+| Testability | Mock factories untuk testing |
 
 ### Rust Code Example
 
@@ -376,29 +376,29 @@ impl Clan {
 }
 ```
 
-### Benefits
+### Manfaat
 
-- Validation happens once at creation
-- Invariants are guaranteed (no empty names, names ≤ 50 chars)
-- Database loading (`with_id`) bypasses validation (trusts DB)
+- Validasi dilakukan sekali saat pembuatan
+- Invariant terjamin (tidak ada nama kosong, nama ≤ 50 karakter)
+- Database loading (`with_id`) melewati validasi (percaya pada DB)
 
 ---
 
 ## Strategy Pattern
 
-### Where
+### Lokasi
 
-- **Java**: `src/main/java/yomu/auth/application/strategy/` — ReactionStrategy + implementations
+- **Java**: `src/main/java/yomu/auth/application/strategy/` — ReactionStrategy + implementasinya
 
-### Why This Pattern
+### Mengapa pattern Ini
 
-The strategy pattern enables extensible behavior:
+Strategy pattern memungkinkan perilaku yang dapat diperluas:
 
-| Benefit | Explanation |
+| Benefit | Penjelasan |
 |---------|-------------|
-| Open/Closed | New strategies without modifying existing code |
-| Testability | Each strategy testable in isolation |
-| Configuration | Select strategy at runtime |
+| Open/Closed | Strategi baru tanpa mengubah kode yang sudah ada |
+| Testability | Setiap strategi dapat diuji secara terisolasi |
+| Configuration | Memilih strategi pada runtime |
 
 ### Java Code Example
 
@@ -478,29 +478,29 @@ public class ReactionController {
 }
 ```
 
-### Benefits
+### Manfaat
 
-- Adding new reaction types doesn't modify existing code
-- Strategy selection happens at runtime
-- Each strategy is testable in isolation
+- Menambahkan tipe reaksi baru tidak mengubah kode yang sudah ada
+- Pemilihan strategi terjadi pada runtime
+- Setiap strategi dapat diuji secara terisolasi
 
 ---
 
 ## Outbox Pattern
 
-### Where
+### Lokasi
 
-- **Java**: `src/main/java/yomu/outbox/` — outbox message handling
+- **Java**: `src/main/java/yomu/outbox/` — handling message outbox
 
-### Why This Pattern
+### Mengapa pattern Ini
 
-The outbox pattern ensures eventual consistency:
+Outbox pattern memastikan eventual consistency:
 
-| Benefit | Explanation |
+| Benefit | Penjelasan |
 |---------|-------------|
-| Atomic writes | Database transaction includes both business data and outbox message |
-| No message queue required | Simple database table for message delivery |
-| Retry mechanism | Failed messages can be re-processed |
+| Atomic writes | Database transaction mencakup business data dan outbox message |
+| No message queue required | Cukup tabel database sederhana untuk pengiriman message |
+| Retry mechanism | Message yang gagal dapat diproses ulang |
 
 ### Flow Diagram
 
@@ -633,31 +633,31 @@ public class OutboxMessageReader {
 }
 ```
 
-### Benefits
+### Manfaat
 
-- No message queue infrastructure required
-- Transactional consistency (both business data and outbox message in one transaction)
+- Tidak diperlukan infrastruktur message queue
+- Konsistensi transactional (business data dan outbox message dalam satu transaction)
 - Retry mechanism built-in
-- Simple to implement and debug
+- Sederhana untuk diimplementasikan dan di-debug
 
 ---
 
 ## Hexagonal / Ports & Adapters
 
-### Where
+### Lokasi
 
-- **Rust**: `domain/`, `infrastructure/`, `presentation/` per module — fully implements Hexagonal Architecture with Ports & Adapters
-- **Java**: Uses conventional **Layered Architecture** (Controller → Service → Repository) via Spring Boot. Hexagonal Architecture concepts are not strictly enforced in the Java codebase.
+- **Rust**: `domain/`, `infrastructure/`, `presentation/` per module — mengimplementasikan Hexagonal Architecture dengan Ports & Adapters secara penuh
+- **Java**: Menggunakan **Layered Architecture** (Controller → Service → Repository) konvensional via Spring Boot. Konsep Hexagonal Architecture tidak diterapkan secara ketat di codebase Java.
 
-### Why This Pattern
+### Mengapa pattern Ini
 
-Hexagonal architecture isolates domain logic:
+Hexagonal architecture mengisolasi domain logic:
 
-| Benefit | Explanation |
+| Benefit | Penjelasan |
 |---------|-------------|
-| Domain isolation | Business logic testable without HTTP or DB |
-| Swappable adapters | Switch from SQLx to Diesel, or from HTTP to gRPC |
-| Testability | Mock adapters for unit tests |
+| Domain isolation | Business logic dapat diuji tanpa HTTP atau DB |
+| Swappable adapters | Ganti dari SQLx ke Diesel, atau dari HTTP ke gRPC |
+| Testability | Mock adapters untuk unit tests |
 
 ### Layer Diagram
 
@@ -788,30 +788,30 @@ pub async fn create_clan(
 }
 ```
 
-### Benefits
+### Manfaat
 
-- Domain logic is pure (no SQL, no HTTP)
-- Easy to swap infrastructure (PostgreSQL → Redis, HTTP → gRPC)
-- Testable without running services (mock repositories)
+- Domain logic murni (tanpa SQL, tanpa HTTP)
+- Mudah mengganti infrastruktur (PostgreSQL → Redis, HTTP → gRPC)
+- Dapat diuji tanpa menjalankan services (mock repositories)
 
 ---
 
 ## BFF / Backend-for-Frontend
 
-### Where
+### Lokasi
 
 - **Next.js**: `src/app/api/v1/` route handlers
 
-### Why This Pattern
+### Mengapa pattern Ini
 
-The BFF pattern hides backend complexity:
+BFF pattern menyembunyikan kompleksitas backend:
 
-| Benefit | Explanation |
+| Benefit | Penjelasan |
 |---------|-------------|
-| Single source of truth | API routes manage data composition |
-| Shared authentication | HTTP-only cookies managed by Next.js |
-| Response formatting | Consistent `{"success", "message", "data"}` format |
-| Error handling | Centralized error transformation |
+| Single source of truth | API routes mengelola komposisi data |
+| Shared authentication | HTTP-only cookies dikelola oleh Next.js |
+| Response formatting | Format konsisten `{"success", "message", "data"}` |
+| Error handling | Transformasi error terpusat |
 
 ### Diagram
 
@@ -919,30 +919,30 @@ export async function GET(request: Request) {
 }
 ```
 
-### Benefits
+### Manfaat
 
-- Frontend makes one request instead of multiple backend calls
-- Auth token managed by Next.js (not exposed to browser)
-- Response format standardized
-- Error handling centralized
+- Frontend membuat satu request, bukan beberapa panggilan backend
+- Auth token dikelola oleh Next.js (tidak terekspos ke browser)
+- Format response terstandarisasi
+- Error handling terpusat
 
 ---
 
 ## API Composition Pattern
 
-### Where
+### Lokasi
 
-- **Rust gamification + Java auth** — Leaderboard page fetches scores from Rust, user names from Java
+- **Rust gamification + Java auth** — Halaman leaderboard mengambil score dari Rust, nama user dari Java
 
-### Why This Pattern
+### Mengapa pattern Ini
 
-API composition avoids backend-to-backend chatter:
+API composition menghindari komunikasi backend-ke-backend:
 
-| Benefit | Explanation |
+| Benefit | Penjelasan |
 |---------|-------------|
-| Reduced overhead | Backend services don't call each other |
-| Better scalability | Frontend can parallelize requests |
-| Simpler scaling | Each service scales independently |
+| Reduced overhead | Backend services tidak saling memanggil |
+| Better scalability | Frontend dapat memparalelkan request |
+| Simpler scaling | Setiap service di-scale secara independen |
 
 ### Rust Code Example
 
@@ -979,30 +979,30 @@ const composed = scores.map(score => ({
 }));
 ```
 
-### Benefits
+### Manfaat
 
-- Rust focus: high-performance score operations
-- Java focus: user profile operations
-- Next.js focus: composition and caching
+- Fokus Rust: operasi score berkinerja tinggi
+- Fokus Java: operasi profil user
+- Fokus Next.js: komposisi dan caching
 
 ---
 
 ## DTO Pattern
 
-### Where
+### Lokasi
 
 - **Rust**: `presentation/dto/` — request/response objects
 - **Java**: `src/main/java/yomu/auth/dto/`, `src/main/java/yomu/outbox/dto/`
 
-### Why This Pattern
+### Mengapa pattern Ini
 
-DTOs decouple API contracts from internal entities:
+DTO memisahkan kontrak API dari internal entities:
 
-| Benefit | Explanation |
+| Benefit | Penjelasan |
 |---------|-------------|
-| Versioning | API changes don't break internal structure |
-| Decoupling | Entities can evolve independently |
-| Validation | DTOs enforce input validation |
+| Versioning | Perubahan API tidak merusak struktur internal |
+| Decoupling | Entities dapat berevolusi secara independen |
+| Validation | DTOs memaksakan validasi input |
 
 ### Rust Code Example
 
@@ -1063,30 +1063,30 @@ impl From<Clan> for ClanResponse {
 }
 ```
 
-### Benefits
+### Manfaat
 
-- Internal `Clan` can have methods, validation, invariants
-- API-level `ClanResponse` is simple (only fields for JSON)
-- Easy to add fields without breaking internal code
+- Internal `Clan` dapat memiliki methods, validasi, invariant
+- `ClanResponse` di level API sederhana (hanya field untuk JSON)
+- Mudah menambahkan field tanpa merusak kode internal
 
 ---
 
 ## Dependency Injection
 
-### Where
+### Lokasi
 
-- **Rust**: Use case constructors accept repositories as parameters
+- **Rust**: Constructor use case menerima repositories sebagai parameter
 - **Java**: `@Autowired` constructor injection, `@Service`, `@Component`
 
-### Why This Pattern
+### Mengapa pattern Ini
 
-DI enables testability and loose coupling:
+DI memungkinkan testability dan loose coupling:
 
-| Benefit | Explanation |
+| Benefit | Penjelasan |
 |---------|-------------|
-| Testability | Mock dependencies for unit tests |
-| Loose coupling | Components depend on abstractions, not concretions |
-| Flexibility | Swap implementations at runtime |
+| Testability | Mock dependencies untuk unit tests |
+| Loose coupling | Components bergantung pada abstraksi, bukan konkret |
+| Flexibility | Tukar implementasi pada runtime |
 
 ### Rust Code Example
 
@@ -1180,11 +1180,11 @@ public class ClanService {
 }
 ```
 
-### Benefits
+### Manfaat
 
-- Testable with mocks
-- Runtime flexibility (switch implementations)
-- Clear dependency graph
+- Dapat diuji dengan mocks
+- Fleksibilitas runtime (ganti implementasi)
+- Dependency graph yang jelas
 
 ---
 
@@ -1203,4 +1203,4 @@ public class ClanService {
 | DTO | Backends | Decouple API from internal entities |
 | DI | Both backends | Enable testing, loose coupling |
 
-These patterns create a maintainable, testable, and high-performance codebase.
+pattern-pattern ini menciptakan codebase yang maintainable, testable, dan berkinerja tinggi.
