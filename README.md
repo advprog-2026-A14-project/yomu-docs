@@ -443,6 +443,12 @@ flowchart TB
   class Observability support;
 ```      
 
+### Risk Storming Rationale
+
+The three diagrams and the future architecture view are used together as the basis for risk storming. The C4 Container Diagram clarifies the main runtime containers, data stores, and external dependency on Google OAuth. The Deployment Diagram shows how those components are deployed on a single EC2 instance, including reverse proxy, containers, databases, Redis, environment variables, secrets, CI/CD, and observability. The Context Diagram explains how users, admins, external authentication, and monitoring systems interact with Yomu. The Future Architecture adds the intended ownership boundaries between the frontend, Java core, Rust engagement engine, and platform responsibilities.
+
+Risk storming is applied because Yomu has several integration and operational risks that are easier to discover visually than from code alone. By walking through these diagrams, the team can identify risks around authentication, internal API trust, database ownership, user and quiz synchronization, retry behavior, Redis-backed leaderboard consistency, secret management, observability gaps, and the single-EC2 deployment as a potential availability and scaling bottleneck. This technique helps group A14 discuss risks early, assign ownership, and prioritize mitigations before implementation and deployment decisions become expensive to change.
+
 ### Translate & Localization
 
 Semua konten dokumentasi ditulis dalam Bahasa Indonesia. Istilah teknis (JWT, OAuth, REST, API, BFF, DTO, CRUD, CI/CD, Redis, PostgreSQL, Docker, Kubernetes, Java, Rust, Next.js, Spring Boot, Axum, SQLx, JPA, Hibernate, dll.) tetap dalam Bahasa Inggris. Hanya narasi, penjelasan, deskripsi, dan heading yang diterjemahkan.
