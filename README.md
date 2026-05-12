@@ -353,8 +353,7 @@ flowchart TB
   
 ## Context Diagram  
 ```mermaid
-  %%{init: {'flowchart': {'defaultRenderer': 'elk'}}}%%
-flowchart TD
+  flowchart TD
   %% Layout settings
   %% Using ELK for cleaner spacing
   %% Define actors
@@ -426,7 +425,7 @@ flowchart TD
   class RE engagement;
   class JDB,RDB,RC database;
   class GoogleSSO external;
-  class Observability support; 
+  class Observability support;
 ```      
 
 ### Translate & Localization
