@@ -476,3 +476,114 @@ Berdasarkan struktur proyek Yomu Docs:
 ---
 
 **Yomu Docs** — Dokumentasi Architecture dan developer guide untuk platform pembelajaran Yomu. Ditulis dengan Bahasa Indonesia dan dibangun dengan Fumadocs + Next.js.
+
+## Analisis Risiko Arsitektur
+
+Sebagai Risk Analyst, berikut adalah identifikasi risiko teknis pada arsitektur Yomu beserta
+strategi mitigasinya berdasarkan diagram-diagram di atas.
+
+### Risiko Tinggi
+
+| ID | Risiko | Komponen Terdampak | Probabilitas | Dampak | Mitigasi |
+|----|--------|--------------------|:------------:|:------:|----------|
+| R1 | **Single Point of Failure — Single EC2** | Seluruh sistem | Sedang | Kritis | Tambahkan Auto Scaling Group + Load Balancer di fase berikutnya; pastikan health check Docker Compose aktif |
+| R2 | **Kegagalan sinkronisasi Java → Rust** | Outbox Scheduler, Engine DB | Tinggi | Tinggi | Outbox pattern sudah ada; pastikan `failed_sync_events` dimonitor dan alert Sentry aktif |
+| R3 | **Bocornya JWT / INTERNAL_API_KEY** | Auth, gRPC channel | Rendah | Kritis | Simpan di GitHub Secrets / AWS Secrets Manager; jangan pernah commit ke repo |
+
+### Risiko Sedang
+
+| ID | Risiko | Komponen Terdampak | Probabilitas | Dampak | Mitigasi |
+|----|--------|--------------------|:------------:|:------:|----------|
+| R4 | **Redis down → leaderboard tidak tersedia** | Rust Engine, Leaderboard | Sedang | Sedang | Redis AOF enabled (sudah dikonfigurasi); pertimbangkan replica untuk produksi |
+| R5 | **Drift schema antara Core DB dan Engine DB** | PostgreSQL (keduanya) | Sedang | Sedang | SQLx compile-time check di Rust; Flyway/Liquibase di Java; migration harus di-review bersama |
+| R6 | **Google OAuth 2.0 downtime** | Login seluruh user | Rendah | Tinggi | Tidak ada fallback auth saat ini — pertimbangkan local fallback atau caching token |
+
+### Risiko Rendah
+
+| ID | Risiko | Komponen Terdampak | Probabilitas | Dampak | Mitigasi |
+|----|--------|--------------------|:------------:|:------:|----------|
+| R7 | **Build MDX gagal akibat tag tidak seimbang** | yomu-docs (repo ini) | Tinggi | Rendah | Selalu jalankan `bun run build` sebelum merge; CI GitHub Actions sudah ada |
+| R8 | **gRPC timeout antara Java dan Rust** | UserSyncService, QuizSyncService | Sedang | Rendah | Set deadline/timeout eksplisit di client gRPC; retry logic ada di Outbox Scheduler |
+
+### Ringkasan Risk Matrix
+
+              Dampak (Impact)
+              Rendah    Sedang    Tinggi    Kritis
+            ┌─────────┬─────────┬─────────┬─────────┐
+    Tinggi  │   R7    │   R2    │         │         │
+            ├─────────┼─────────┼─────────┼─────────┤
+    Sedang  │   R8    │ R4, R5  │   R1    │         │
+            ├─────────┼─────────┼─────────┼─────────┤
+    Rendah  │         │         │   R6    │ R1, R3  │
+            └─────────┴─────────┴─────────┴─────────┘
+
+### Prioritas Tindakan
+
+1. **Segera** — Pastikan semua secret (JWT_SECRET, INTERNAL_API_KEY, DB credentials) tidak ada di
+   codebase; gunakan environment variable yang di-inject saat deploy.
+2. **Sprint ini** — Monitor tabel `failed_sync_events` secara aktif; tambahkan alert jika row
+   bertumpuk > threshold tertentu.
+3. **Sprint berikutnya** — Evaluasi strategi Redis replica dan disaster recovery untuk PostgreSQL
+   (backup otomatis).
+4. **Future** — Migrasi ke multi-instance deployment (lihat Future Architecture diagram dari Bayu)
+   untuk menghilangkan R1.
+
+---
+
+## Penjelasan Diagram Arsitektur
+
+Bagian ini menjelaskan keempat diagram C4 yang ada di repository ini agar mudah dipahami oleh
+developer baru maupun reviewer.
+
+### 1. Context Diagram
+
+**Level C4:** Level 1 — gambaran paling tinggi, siapa yang menggunakan sistem dan sistem eksternal
+apa yang berinteraksi.
+
+**Yang ditunjukkan:**
+- **Pelajar** dan **Admin** sebagai aktor utama yang mengakses via HTTPS
+- **Yomu System** sebagai kotak hitam besar yang berisi seluruh platform
+- **Google OAuth** sebagai dependency eksternal untuk autentikasi
+- **Sistem Observability** (Sentry, Prometheus, Tempo) sebagai infrastruktur monitoring
+
+**Poin penting:** Diagram ini menunjukkan bahwa Yomu sepenuhnya bergantung pada Google OAuth untuk
+login — tidak ada username/password tradisional.
+
+### 2. Container Diagram
+
+**Level C4:** Level 2 — memecah sistem menjadi container (proses/aplikasi yang dapat di-deploy
+secara terpisah).
+
+**Yang ditunjukkan:**
+- **Next.js Frontend** sebagai BFF (Backend for Frontend) yang menjadi satu-satunya pintu masuk
+  bagi user
+- **Java Core Service** menangani domain utama: auth, artikel, kuis, forum
+- **Rust Engine** menangani domain gamifikasi: clan, leaderboard, achievement, misi
+- **3 database terpisah:** Core PostgreSQL, Engine PostgreSQL, dan Redis
+
+**Poin penting:** Java dan Rust **tidak berbagi database** — ini keputusan desain yang disengaja
+untuk isolasi domain (lihat Design Decisions di dokumentasi).
+
+### 3. Deployment Diagram
+
+**Level C4:** Level 4 — menunjukkan bagaimana container di-deploy ke infrastruktur nyata.
+
+**Yang ditunjukkan:**
+- Semua container berjalan di **satu EC2 instance** via Docker Compose (saat ini)
+- **Nginx** sebagai reverse proxy di depan Next.js
+- **GitHub Actions** → **GHCR** → **EC2** sebagai pipeline CI/CD
+- Pemisahan antara environment variables (tidak sensitif) dan runtime secrets (sensitif)
+
+**Poin penting:** Deployment saat ini adalah *single host* — lihat R1 di Risk Analysis di atas.
+
+### 4. Future Architecture
+
+**Tipe:** Squad-based architecture diagram untuk roadmap pengembangan tim.
+
+**Yang ditunjukkan:**
+- Pembagian tim menjadi 4 squad: Frontend, Core, Engagement, Platform
+- Rencana pemisahan tanggung jawab yang lebih jelas antar squad
+- Pola komunikasi: Frontend → BFF → masing-masing service; Java ↔ Rust via Outbox + Webhook
+
+**Poin penting:** Diagram ini adalah **target arsitektur**, bukan kondisi saat ini. Transisi dari
+deployment single-EC2 ke arsitektur ini memerlukan orkestrasi container (Kubernetes atau ECS).
