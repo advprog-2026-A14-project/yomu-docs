@@ -363,7 +363,84 @@ flowchart TB
   class JavaDB,RustDB,Redis,CorePgVol,EnginePgVol,RedisVol,Cookie,Mock data;
   class Internet,Nginx,Docker infra;
   class Prom,Tempo,Sentry,GitHub,Actions,GHCR,OBS,CICD support;
-```
+```  
+  
+## Context Diagram  
+```mermaid
+  flowchart TD
+  %% Layout settings
+  %% Using ELK for cleaner spacing
+  %% Define actors
+  Pelajar(["Pelajar"])
+  Admin(["Admin"])
+
+  %% External systems
+  GoogleSSO["Google OAuth<br/>(Layanan Eksternal)"]
+  Observability["Sistem Observability<br/>(Sentry, Prometheus, Tempo)"]
+
+  %% System boundary
+  subgraph Yomu_System ["Sistem Yomu<br/>(Platform Pembelajaran Poliglot)"]
+    subgraph Frontend_Section ["Frontend"]
+      FE["Yomu Frontend<br/>(Next.js App Router & BFF)"]
+    end
+
+    subgraph Core_Section ["Java Core System"]
+      JC["Java Core Service<br/>(Spring Boot 4)"]
+      Scheduler["Java Outbox Scheduler<br/>(Retry Job)"]
+      JDB[("Core DB<br/>(PostgreSQL)")]
+    end
+
+    subgraph Engine_Section ["Rust Gamification Engine"]
+      RE["Rust Gamification Engine<br/>(Axum & Tonic)"]
+      RDB[("Engine DB<br/>(PostgreSQL)")]
+      RC[("Redis Cache")]
+    end
+  end
+
+  %% Actor interactions
+  Pelajar -->|"Mengakses UI aplikasi<br/>(HTTPS)"| FE
+  Admin -->|"Mengelola konten & sistem<br/>(HTTPS)"| FE
+
+  %% Frontend relations
+  FE <-->|"Mendapatkan ID Token<br/>(Popup/Redirect)"| GoogleSSO
+  FE -->|"REST API (JWT)<br/>(Auth, User, Bacaan, Forum)"| JC
+  FE -.->|"REST API (Opsional/Planned)<br/>(Leaderboard, Clan, Misi)"| RE
+
+  %% Java Core relations
+  JC -->|"Verifikasi ID Token Google"| GoogleSSO
+  JC -->|"Simpan kredensial, bacaan & event"| JDB
+  JC -->|"Sinkronisasi User, Quiz & Liga<br/>(gRPC + x-api-key)"| RE
+  
+  %% Scheduler (fault tolerance)
+  Scheduler -->|"Membaca failed_sync_events"| JDB
+  Scheduler -->|"Retry sinkronisasi gagal<br/>(gRPC + x-api-key)"| RE
+
+  %% Rust Engine relations
+  RE -->|"Verifikasi validitas artikel<br/>(Internal REST + x-api-key)"| JC
+  RE -->|"Simpan data Clan, Tier & Histori"| RDB
+  RE -->|"Cache data Leaderboard"| RC
+
+  %% Observability
+  JC -.->|"Kirim Error & Trace"| Observability
+  RE -.->|"Kirim Metrics, Error & Trace"| Observability
+
+  %% Styling
+  classDef actor fill:#f8f9fa,stroke:#343a40,stroke-width:2px,color:#000;
+  classDef frontend fill:#00bcd4,stroke:#00838f,stroke-width:2px,color:#fff;
+  classDef core fill:#673ab7,stroke:#4527a0,stroke-width:2px,color:#fff;
+  classDef engagement fill:#e91e63,stroke:#880e4f,stroke-width:2px,color:#fff;
+  classDef database fill:#fff3e0,stroke:#f57c00,stroke-width:2px,color:#000;
+  classDef external fill:#fce4ec,stroke:#c2185b,stroke-width:2px,color:#000;
+  classDef support fill:#ff9800,stroke:#e65100,stroke-width:2px,color:#fff;
+
+  class Pelajar,Admin actor;
+  class FE frontend;
+  class JC,Scheduler core;
+  class RE engagement;
+  class JDB,RDB,RC database;
+  class GoogleSSO external;
+  class Observability support;
+```      
 
 ### Translate & Localization
 
