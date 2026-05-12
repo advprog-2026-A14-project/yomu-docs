@@ -353,60 +353,65 @@ flowchart TB
   
 ## Context Diagram  
 ```mermaid
-  flowchart TD
-  %% Definisi Aktor
+  %%{init: {'flowchart': {'defaultRenderer': 'elk'}}}%%
+flowchart TD
+  %% Layout settings
+  %% Using ELK for cleaner spacing
+  %% Define actors
   Pelajar(["Pelajar"])
   Admin(["Admin"])
 
-  %% Definisi Sistem Eksternal
-  GoogleSSO["Google OAuth\n(Layanan Eksternal)"]
-  Observability["Sistem Observability\n(Sentry, Prometheus, Tempo)"]
+  %% External systems
+  GoogleSSO["Google OAuth<br/>(Layanan Eksternal)"]
+  Observability["Sistem Observability<br/>(Sentry, Prometheus, Tempo)"]
 
-  %% Definisi Batasan Sistem Yomu
-  subgraph Yomu_System ["Sistem Yomu (Platform Pembelajaran Poliglot)"]
-      FE["Yomu Frontend\n(Next.js App Router & BFF)"]
-      
-      %% Core Java
-      JC["Java Core Service\n(Spring Boot 4)"]
-      Scheduler["Java Outbox Scheduler\n(Retry Job)"]
-      
-      %% Engine Rust
-      RE["Rust Gamification Engine\n(Axum & Tonic)"]
+  %% System boundary
+  subgraph Yomu_System ["Sistem Yomu<br/>(Platform Pembelajaran Poliglot)"]
+    subgraph Frontend_Section ["Frontend"]
+      FE["Yomu Frontend<br/>(Next.js App Router & BFF)"]
+    end
 
-      %% Definisi Database
-      JDB[("Core DB\n(PostgreSQL)")]
-      RDB[("Engine DB\n(PostgreSQL)")]
+    subgraph Core_Section ["Java Core System"]
+      JC["Java Core Service<br/>(Spring Boot 4)"]
+      Scheduler["Java Outbox Scheduler<br/>(Retry Job)"]
+      JDB[("Core DB<br/>(PostgreSQL)")]
+    end
+
+    subgraph Engine_Section ["Rust Gamification Engine"]
+      RE["Rust Gamification Engine<br/>(Axum & Tonic)"]
+      RDB[("Engine DB<br/>(PostgreSQL)")]
       RC[("Redis Cache")]
+    end
   end
 
-  %% Relasi Aktor
-  Pelajar -- "Mengakses UI aplikasi\n(HTTPS)" --> FE
-  Admin -- "Mengelola konten & sistem\n(HTTPS)" --> FE
+  %% Actor interactions
+  Pelajar -->|"Mengakses UI aplikasi<br/>(HTTPS)"| FE
+  Admin -->|"Mengelola konten & sistem<br/>(HTTPS)"| FE
 
-  %% Relasi Frontend
-  FE <-->|"Mendapatkan ID Token\n(Popup/Redirect)"| GoogleSSO
-  FE -- "REST API (JWT)\n(Auth, User, Bacaan, Forum)" --> JC
-  FE -. "REST API (Opsional/Planned)\n(Leaderboard, Clan, Misi)" .-> RE
+  %% Frontend relations
+  FE <-->|"Mendapatkan ID Token<br/>(Popup/Redirect)"| GoogleSSO
+  FE -->|"REST API (JWT)<br/>(Auth, User, Bacaan, Forum)"| JC
+  FE -.->|"REST API (Opsional/Planned)<br/>(Leaderboard, Clan, Misi)"| RE
 
-  %% Relasi Java Core
-  JC -- "Verifikasi ID Token Google" --> GoogleSSO
-  JC -- "Simpan kredensial, bacaan & event" --> JDB
-  JC -- "Sinkronisasi User, Quiz & Liga\n(gRPC + x-api-key)" --> RE
+  %% Java Core relations
+  JC -->|"Verifikasi ID Token Google"| GoogleSSO
+  JC -->|"Simpan kredensial, bacaan & event"| JDB
+  JC -->|"Sinkronisasi User, Quiz & Liga<br/>(gRPC + x-api-key)"| RE
   
-  %% Relasi Scheduler (Fault Tolerance)
-  Scheduler -- "Membaca failed_sync_events" --> JDB
-  Scheduler -- "Retry sinkronisasi gagal\n(gRPC + x-api-key)" --> RE
+  %% Scheduler (fault tolerance)
+  Scheduler -->|"Membaca failed_sync_events"| JDB
+  Scheduler -->|"Retry sinkronisasi gagal<br/>(gRPC + x-api-key)"| RE
 
-  %% Relasi Rust Engine
-  RE -- "Verifikasi validitas artikel\n(Internal REST + x-api-key)" --> JC
-  RE -- "Simpan data Clan, Tier & Histori" --> RDB
-  RE -- "Cache data Leaderboard" --> RC
+  %% Rust Engine relations
+  RE -->|"Verifikasi validitas artikel<br/>(Internal REST + x-api-key)"| JC
+  RE -->|"Simpan data Clan, Tier & Histori"| RDB
+  RE -->|"Cache data Leaderboard"| RC
 
-  %% Relasi Observability (Logging & APM)
-  JC -. "Kirim Error & Trace" .-> Observability
-  RE -. "Kirim Metrics, Error & Trace" .-> Observability
+  %% Observability
+  JC -.->|"Kirim Error & Trace"| Observability
+  RE -.->|"Kirim Metrics, Error & Trace"| Observability
 
-  %% Styling disesuaikan dengan Future Architecture Yomu Docs
+  %% Styling
   classDef actor fill:#f8f9fa,stroke:#343a40,stroke-width:2px,color:#000;
   classDef frontend fill:#00bcd4,stroke:#00838f,stroke-width:2px,color:#fff;
   classDef core fill:#673ab7,stroke:#4527a0,stroke-width:2px,color:#fff;
@@ -421,7 +426,7 @@ flowchart TB
   class RE engagement;
   class JDB,RDB,RC database;
   class GoogleSSO external;
-  class Observability support;  
+  class Observability support; 
 ```      
 
 ### Translate & Localization
