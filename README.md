@@ -149,6 +149,20 @@ Dokumentasi mendukung komponen-komponen berikut:
 
 ### Main Diagrams
 
+#### C4 Container Diagram
+
+![C4 Container Diagram - Yomu Polyglot Learning Platform](./content/docs/architecture/container-diagram.png)
+
+Diagram kontainer di atas menggambarkan arsitektur Level 2 C4 Model untuk platform Yomu. Diagram ini menunjukkan:
+
+- **Web Application** (Next.js 16) — Frontend BFF yang berkomunikasi dengan Java dan Rust backend
+- **Java Core Service** (Spring Boot 4) — Autentikasi, artikel & kuis, forum, outbox sync ke Rust
+- **Rust Engine Service** (Axum 0.8.8) — Gamifikasi, clan, leaderboard (Redis), achievement, missions
+- **Core DB** (PostgreSQL) — Database Java untuk users, artikel, kuis, forum, outbox/failed sync
+- **Engine DB** (PostgreSQL) — Database Rust untuk shadow users, clan, scores, achievements
+- **Redis** — Leaderboard real-time dan cache gamifikasi
+- **Google OAuth 2.0** — Sistem autentikasi eksternal untuk SSO
+
 ```mermaid
 graph TD
     A[Frontend Next.js] --> B[Java Backend]
