@@ -212,6 +212,10 @@ graph TB
     class Outbox,Monitor,EC2 platform;
 ```
 
+## Deployment Diagram
+
+![Deployment Diagram](content/docs/architecture/deployment-diagram.png)
+
 ### Translate & Localization
 
 Semua konten dokumentasi ditulis dalam Bahasa Indonesia. Istilah teknis (JWT, OAuth, REST, API, BFF, DTO, CRUD, CI/CD, Redis, PostgreSQL, Docker, Kubernetes, Java, Rust, Next.js, Spring Boot, Axum, SQLx, JPA, Hibernate, dll.) tetap dalam Bahasa Inggris. Hanya narasi, penjelasan, deskripsi, dan heading yang diterjemahkan.
