@@ -154,67 +154,160 @@ Gunakan blok mermaid untuk diagram:
 ```mermaid
 graph TD
     A[Frontend Next.js] --> B[Java Backend]
-    B --> C[PostgreSQL]
+    B --> B[Rust Backend] --> C[PostgreSQL]
 ```
 
 Future Architecture
 ```mermaid
-graph TB
-    subgraph Frontend_Squad ["Tim Web Experience (Frontend Owner)"]
-        UI["Next.js (Client & SSR)"]
-        BFF["Next.js API Routes (BFF)"]
+flowchart TB
+  User["Web / Mobile Users"]
+  Internet((Internet))
+  Google["External Service<br/>Google OAuth2 API<br/>oauth2.googleapis.com/tokeninfo"]
+
+  subgraph PROD["Production Deployment Environment"]
+    direction TB
+
+    subgraph FRONT_HOST["Deployment Node: Frontend Docker Host / VM"]
+      direction TB
+      subgraph FRONT_CONT["Execution Environment: Container yomu-frontend"]
+        direction TB
+        Next["Artifact: Next.js 16 Standalone Server<br/>Node runtime<br/>Port :3000"]
+        Pages["Artifact: App Router Pages<br/>React 19 + Tailwind + shadcn/ui"]
+        BFF["Artifact: Next Route Handlers / BFF<br/>/api/v1/auth<br/>/api/v1/users<br/>/api/v1/forums"]
+        Cookie[("HttpOnly Auth Cookie<br/>AUTH_COOKIE_NAME<br/>sameSite=lax")]
+        Mock[("Local Mock Data<br/>articles / quizzes")]
+      end
     end
 
-    subgraph Core_Squad ["Tim Core & Content (Java Owner)"]
-        Auth["Auth & User Context"]
-        Content["Content & Forum Context"]
-        CoreDB[("PostgreSQL (Core_DB)")]
+    subgraph K8S["Deployment Node: Kubernetes Cluster - Java Core API"]
+      direction TB
+      Ingress["Infrastructure Node: Ingress<br/>api.yomu.example.com"]
+      JavaSvc["Infrastructure Node: Service<br/>yomu-java-core-service<br/>ClusterIP :80 -> :8080"]
+
+      subgraph JAVA_DEPLOY["Execution Environment: Deployment yomu-java-core<br/>3 replicas, role=web"]
+        direction LR
+        Web1["Pod 1<br/>Spring Boot REST API<br/>Auth, User, Article, Quiz, Forum, Admin"]
+        Web2["Pod 2<br/>Spring Boot REST API<br/>JWT stateless<br/>JPA repositories"]
+        Web3["Pod 3<br/>Spring Boot REST API<br/>Actuator readiness/liveness"]
+      end
+
+      Scheduler["Execution Environment: Deployment yomu-java-outbox-scheduler<br/>1 replica<br/>OUTBOX_SCHEDULER_ENABLED=true<br/>retry every 5 minutes"]
+      JavaDB[("Data Store: PostgreSQL Service<br/>postgres-service :5432<br/>Database: yomu_db")]
+      Config["ConfigMap<br/>SERVER_PORT, CORS, Rust host/port,<br/>DB pool, JWT issuer/audience"]
+      Secret["Secret<br/>DB credentials, JWT_SECRET,<br/>INTERNAL_API_KEY,<br/>GOOGLE_OAUTH_CLIENT_ID"]
+      RustSvc["Infrastructure Node: Rust Engine Service<br/>rust-engine-service<br/>gRPC :9090<br/>REST :8080 optional"]
     end
 
-    subgraph Engagement_Squad ["Tim Engagement (Rust Owner)"]
-        Gamification["Gamification Context"]
-        League["League Context"]
-        EngineDB[("PostgreSQL (Engine_DB)")]
-        Redis[("Redis Cache")]
+    subgraph RUST_HOST["Deployment Node: Rust Engine Runtime<br/>Docker Compose / Railway"]
+      direction TB
+      subgraph YOMU_NET["Execution Environment: Docker Network yomu-network"]
+        direction TB
+        RustApp["Container: yomu-engine<br/>Rust Axum + Tonic<br/>HTTP :8080<br/>gRPC :9090<br/>/health /metrics /swagger-ui<br/>runs SQLx migrations on startup"]
+        RustDB[("Container: yomu-postgres<br/>PostgreSQL 18<br/>Port :5432")]
+        Redis[("Container: yomu-redis<br/>Redis 8 Alpine<br/>Port :6379<br/>AOF enabled")]
+      end
+      PgVol[("Volume: postgres_data")]
+      RedisVol[("Volume: redis_data")]
     end
+  end
 
-    subgraph Platform_Squad ["Tim Platform & SRE (Infra Owner)"]
-        Outbox["User Sync Context (Outbox)"]
-        Monitor["Observability (Grafana, Sentry)"]
-        EC2{{"AWS EC2 Deployment"}}
-    end
+  subgraph OBS["Supporting Infrastructure: Monitoring and Logging"]
+    direction LR
+    Prom["Prometheus Scraper"]
+    Tempo["OTLP Collector / Grafana Tempo"]
+    Sentry["Sentry Errors / APM"]
+  end
 
-    %% Relasi Alur Komunikasi
-    UI -->|HTTP/JSON| BFF
-    BFF -->|REST API| Auth
-    BFF -->|REST API| Content
-    BFF -->|REST API| Gamification
-    
-    Auth --> CoreDB
-    Content --> CoreDB
-    Gamification --> EngineDB
-    Gamification --> Redis
-    League --> EngineDB
-    
-    Auth -.->|Generate Event| Outbox
-    Outbox -.->|Webhook Push| Gamification
-    Gamification -.->|Sync Pull| Auth
+  subgraph CICD["Supporting Infrastructure: CI/CD"]
+    direction LR
+    GitHub["GitHub Repository"]
+    Actions["GitHub Actions<br/>test, clippy, audit, sonar, docker build"]
+    GHCR["GitHub Container Registry<br/>ghcr.io/.../yomu-backend-rust"]
+  end
 
-    %% Updated Styling for Better Readability
-    classDef frontend fill:#00bcd4,stroke:#00838f,stroke-width:2px,color:#fff;
-    classDef core fill:#673ab7,stroke:#4527a0,stroke-width:2px,color:#fff;
-    classDef engagement fill:#e91e63,stroke:#880e4f,stroke-width:2px,color:#fff;
-    classDef platform fill:#ff9800,stroke:#e65100,stroke-width:2px,color:#fff;
+  %% User and Frontend
+  User -->|"HTTPS / HTTP<br/>pages + static assets"| Internet
+  Internet -->|":3000"| Next
+  Next --> Pages
+  Pages -->|"same-origin fetch<br/>/api/v1/..."| BFF
+  Pages <-->|"Google sign-in popup / token"| Google
+  BFF -->|"set / clear cookie"| Cookie
+  User -->|"sends cookie automatically"| BFF
+  Pages -->|"read quiz / catalog data"| Mock
 
-    class UI,BFF frontend;
-    class Auth,Content,CoreDB core;
-    class Gamification,League,EngineDB,Redis engagement;
-    class Outbox,Monitor,EC2 platform;
+  %% Frontend to Java Core Backend
+  BFF -->|"REST + JWT<br/>/api/v1/auth<br/>/api/v1/users<br/>/api/v1/articles<br/>/api/v1/quizzes<br/>/api/v1/forums"| Ingress
+  Ingress --> JavaSvc
+  JavaSvc --> Web1
+  JavaSvc --> Web2
+  JavaSvc --> Web3
+
+  %% Java Core to Database and External Services
+  Web1 -->|"JDBC / HikariCP"| JavaDB
+  Web2 -->|"JDBC / HikariCP"| JavaDB
+  Web3 -->|"JDBC / HikariCP"| JavaDB
+  Scheduler -->|"JDBC<br/>read failed_sync_events<br/>update retry status"| JavaDB
+  Web1 -->|"verify Google ID token"| Google
+  Web2 -->|"verify Google ID token"| Google
+  Web3 -->|"verify Google ID token"| Google
+
+  %% Java Core to Rust Engine
+  Web1 -->|"gRPC + x-api-key<br/>UserSyncService<br/>QuizSyncService<br/>LeagueService"| RustSvc
+  Web2 -->|"gRPC + x-api-key"| RustSvc
+  Web3 -->|"gRPC + x-api-key"| RustSvc
+  Scheduler -->|"retry sync<br/>gRPC + x-api-key"| RustSvc
+  RustSvc -->|"routes to runtime"| RustApp
+  RustApp -->|"internal REST + x-api-key<br/>/api/internal/articles/{article_id}/exists"| JavaSvc
+
+  %% Optional direct frontend to Rust Engine from env
+  BFF -.->|"RUST_ENGINE_URL exists<br/>optional / planned direct call"| RustApp
+
+  %% Rust Engine Persistence and Observability
+  RustApp -->|"SQLx pool<br/>DATABASE_URL"| RustDB
+  RustApp -->|"Redis connection<br/>REDIS_URL"| Redis
+  RustDB --- PgVol
+  Redis --- RedisVol
+  Prom -->|"GET /metrics"| RustApp
+  RustApp -->|"OTLP traces"| Tempo
+  RustApp -->|"errors / APM"| Sentry
+
+  %% Config and Secret Injection
+  Config -. "envFrom" .-> Web1
+  Config -. "envFrom" .-> Web2
+  Config -. "envFrom" .-> Web3
+  Config -. "envFrom" .-> Scheduler
+  Secret -. "envFrom" .-> Web1
+  Secret -. "envFrom" .-> Web2
+  Secret -. "envFrom" .-> Web3
+  Secret -. "envFrom" .-> Scheduler
+
+  %% CI/CD
+  GitHub --> Actions
+  Actions -->|"build and push image"| GHCR
+  GHCR -->|"deploy / pull image"| RustApp
+
+  %% Legend / Styling
+  classDef user fill:#ffffff,stroke:#111827,stroke-width:2px,color:#111827;
+  classDef external fill:#fff7ed,stroke:#ea580c,stroke-width:2px,color:#111827;
+  classDef host fill:#f8fafc,stroke:#334155,stroke-width:2px,color:#111827;
+  classDef frontend fill:#e8f1ff,stroke:#2563eb,stroke-width:2px,color:#111827;
+  classDef java fill:#fff1e6,stroke:#f97316,stroke-width:2px,color:#111827;
+  classDef rust fill:#ecfdf5,stroke:#16a34a,stroke-width:2px,color:#111827;
+  classDef data fill:#f5f3ff,stroke:#7c3aed,stroke-width:2px,color:#111827;
+  classDef infra fill:#fef9c3,stroke:#ca8a04,stroke-width:2px,color:#111827;
+  classDef support fill:#fce7f3,stroke:#db2777,stroke-width:2px,color:#111827;
+  classDef optional fill:#f5f3ff,stroke:#7c3aed,stroke-dasharray:5 5,color:#111827;
+
+  class User user;
+  class Google external;
+  class FRONT_HOST,K8S,RUST_HOST,PROD host;
+  class Next,Pages,BFF,FRONT_CONT frontend;
+  class Ingress,JavaSvc,Web1,Web2,Web3,Scheduler,Config,Secret,JAVA_DEPLOY java;
+  class RustSvc,RustApp,YOMU_NET rust;
+  class JavaDB,RustDB,Redis,PgVol,RedisVol,Cookie,Mock data;
+  class Internet infra;
+  class Prom,Tempo,Sentry,GitHub,Actions,GHCR,OBS,CICD support;
 ```
-
-## Deployment Diagram
-
-![Deployment Diagram](content/docs/architecture/deployment-diagram.png)
 
 ### Translate & Localization
 
