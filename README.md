@@ -147,17 +147,71 @@ Dokumentasi mendukung komponen-komponen berikut:
 - **Tables** — Tabel Markdown standar
 - **Mermaid** — Diagram sequence, flowchart, ER diagram
 
-### Mermaid Diagrams
-
-Gunakan blok mermaid untuk diagram:
+### Main Diagrams
 
 ```mermaid
 graph TD
     A[Frontend Next.js] --> B[Java Backend]
-    B --> B[Rust Backend] --> C[PostgreSQL]
+    B --> C[Rust Backend] --> D[PostgreSQL]
 ```
 
-Future Architecture
+### Future Architecture
+```mermaid
+graph TB
+    subgraph Frontend_Squad ["Tim Web Experience (Frontend Owner)"]
+        UI["Next.js (Client & SSR)"]
+        BFF["Next.js API Routes (BFF)"]
+    end
+
+    subgraph Core_Squad ["Tim Core & Content (Java Owner)"]
+        Auth["Auth & User Context"]
+        Content["Content & Forum Context"]
+        CoreDB[("PostgreSQL (Core_DB)")]
+    end
+
+    subgraph Engagement_Squad ["Tim Engagement (Rust Owner)"]
+        Gamification["Gamification Context"]
+        League["League Context"]
+        EngineDB[("PostgreSQL (Engine_DB)")]
+        Redis[("Redis Cache")]
+    end
+
+    subgraph Platform_Squad ["Tim Platform & SRE (Infra Owner)"]
+        Outbox["User Sync Context (Outbox)"]
+        Monitor["Observability (Grafana, Sentry)"]
+        EC2{{"AWS EC2 Deployment"}}
+    end
+
+    %% Relasi Alur Komunikasi
+    UI -->|HTTP/JSON| BFF
+    BFF -->|REST API| Auth
+    BFF -->|REST API| Content
+    BFF -->|REST API| Gamification
+    
+    Auth --> CoreDB
+    Content --> CoreDB
+    Gamification --> EngineDB
+    Gamification --> Redis
+    League --> EngineDB
+    
+    Auth -.->|Generate Event| Outbox
+    Outbox -.->|Webhook Push| Gamification
+    Gamification -.->|Sync Pull| Auth
+
+    %% Updated Styling for Better Readability
+    classDef frontend fill:#00bcd4,stroke:#00838f,stroke-width:2px,color:#fff;
+    classDef core fill:#673ab7,stroke:#4527a0,stroke-width:2px,color:#fff;
+    classDef engagement fill:#e91e63,stroke:#880e4f,stroke-width:2px,color:#fff;
+    classDef platform fill:#ff9800,stroke:#e65100,stroke-width:2px,color:#fff;
+
+    class UI,BFF frontend;
+    class Auth,Content,CoreDB core;
+    class Gamification,League,EngineDB,Redis engagement;
+    class Outbox,Monitor,EC2 platform;
+```
+
+### Deployment Diagram
+
 ```mermaid
 flowchart TB
   User["Web / Mobile Users"]
@@ -167,8 +221,12 @@ flowchart TB
   subgraph PROD["Production Deployment Environment"]
     direction TB
 
-    subgraph FRONT_HOST["Deployment Node: Frontend Docker Host / VM"]
+    subgraph EC2["Deployment Node: Single AWS EC2 Instance"]
       direction TB
+
+      Docker["Docker Compose Runtime<br/>single host network"]
+      Nginx["Reverse Proxy<br/>Nginx / Caddy<br/>Ports :80 / :443"]
+
       subgraph FRONT_CONT["Execution Environment: Container yomu-frontend"]
         direction TB
         Next["Artifact: Next.js 16 Standalone Server<br/>Node runtime<br/>Port :3000"]
@@ -177,36 +235,26 @@ flowchart TB
         Cookie[("HttpOnly Auth Cookie<br/>AUTH_COOKIE_NAME<br/>sameSite=lax")]
         Mock[("Local Mock Data<br/>articles / quizzes")]
       end
-    end
 
-    subgraph K8S["Deployment Node: Kubernetes Cluster - Java Core API"]
-      direction TB
-      Ingress["Infrastructure Node: Ingress<br/>api.yomu.example.com"]
-      JavaSvc["Infrastructure Node: Service<br/>yomu-java-core-service<br/>ClusterIP :80 -> :8080"]
-
-      subgraph JAVA_DEPLOY["Execution Environment: Deployment yomu-java-core<br/>3 replicas, role=web"]
-        direction LR
-        Web1["Pod 1<br/>Spring Boot REST API<br/>Auth, User, Article, Quiz, Forum, Admin"]
-        Web2["Pod 2<br/>Spring Boot REST API<br/>JWT stateless<br/>JPA repositories"]
-        Web3["Pod 3<br/>Spring Boot REST API<br/>Actuator readiness/liveness"]
-      end
-
-      Scheduler["Execution Environment: Deployment yomu-java-outbox-scheduler<br/>1 replica<br/>OUTBOX_SCHEDULER_ENABLED=true<br/>retry every 5 minutes"]
-      JavaDB[("Data Store: PostgreSQL Service<br/>postgres-service :5432<br/>Database: yomu_db")]
-      Config["ConfigMap<br/>SERVER_PORT, CORS, Rust host/port,<br/>DB pool, JWT issuer/audience"]
-      Secret["Secret<br/>DB credentials, JWT_SECRET,<br/>INTERNAL_API_KEY,<br/>GOOGLE_OAUTH_CLIENT_ID"]
-      RustSvc["Infrastructure Node: Rust Engine Service<br/>rust-engine-service<br/>gRPC :9090<br/>REST :8080 optional"]
-    end
-
-    subgraph RUST_HOST["Deployment Node: Rust Engine Runtime<br/>Docker Compose / Railway"]
-      direction TB
-      subgraph YOMU_NET["Execution Environment: Docker Network yomu-network"]
+      subgraph JAVA_CONT["Execution Environment: Container yomu-java-core"]
         direction TB
-        RustApp["Container: yomu-engine<br/>Rust Axum + Tonic<br/>HTTP :8080<br/>gRPC :9090<br/>/health /metrics /swagger-ui<br/>runs SQLx migrations on startup"]
-        RustDB[("Container: yomu-postgres<br/>PostgreSQL 18<br/>Port :5432")]
-        Redis[("Container: yomu-redis<br/>Redis 8 Alpine<br/>Port :6379<br/>AOF enabled")]
+        JavaApp["Artifact: Spring Boot REST API<br/>Auth, User, Article, Quiz, Forum, Admin<br/>JWT stateless + JPA repositories<br/>Port :8080"]
       end
-      PgVol[("Volume: postgres_data")]
+
+      Scheduler["Execution Environment: Container yomu-java-outbox-scheduler<br/>OUTBOX_SCHEDULER_ENABLED=true<br/>retry every 5 minutes"]
+
+      subgraph RUST_CONT["Execution Environment: Container yomu-engine"]
+        direction TB
+        RustApp["Artifact: Rust Axum + Tonic<br/>HTTP :8081<br/>gRPC :9090<br/>/health /metrics /swagger-ui<br/>runs SQLx migrations on startup"]
+      end
+
+      JavaDB[("Container: yomu-core-postgres<br/>PostgreSQL<br/>Database: yomu_db<br/>Internal port :5432")]
+      RustDB[("Container: yomu-engine-postgres<br/>PostgreSQL<br/>Internal port :5432")]
+      Redis[("Container: yomu-redis<br/>Redis Alpine<br/>Internal port :6379<br/>AOF enabled")]
+      Env["Environment Variables / .env<br/>SERVER_PORT, CORS, DB URLs,<br/>JWT issuer/audience, Rust host/port"]
+      Secret["Runtime Secrets<br/>DB credentials, JWT_SECRET,<br/>INTERNAL_API_KEY,<br/>GOOGLE_OAUTH_CLIENT_ID"]
+      CorePgVol[("Volume: core_postgres_data")]
+      EnginePgVol[("Volume: engine_postgres_data")]
       RedisVol[("Volume: redis_data")]
     end
   end
@@ -227,7 +275,8 @@ flowchart TB
 
   %% User and Frontend
   User -->|"HTTPS / HTTP<br/>pages + static assets"| Internet
-  Internet -->|":3000"| Next
+  Internet -->|":80 / :443"| Nginx
+  Nginx -->|"proxy /"| Next
   Next --> Pages
   Pages -->|"same-origin fetch<br/>/api/v1/..."| BFF
   Pages <-->|"Google sign-in popup / token"| Google
@@ -236,55 +285,48 @@ flowchart TB
   Pages -->|"read quiz / catalog data"| Mock
 
   %% Frontend to Java Core Backend
-  BFF -->|"REST + JWT<br/>/api/v1/auth<br/>/api/v1/users<br/>/api/v1/articles<br/>/api/v1/quizzes<br/>/api/v1/forums"| Ingress
-  Ingress --> JavaSvc
-  JavaSvc --> Web1
-  JavaSvc --> Web2
-  JavaSvc --> Web3
+  BFF -->|"REST + JWT<br/>/api/v1/auth<br/>/api/v1/users<br/>/api/v1/articles<br/>/api/v1/quizzes<br/>/api/v1/forums"| JavaApp
 
   %% Java Core to Database and External Services
-  Web1 -->|"JDBC / HikariCP"| JavaDB
-  Web2 -->|"JDBC / HikariCP"| JavaDB
-  Web3 -->|"JDBC / HikariCP"| JavaDB
+  JavaApp -->|"JDBC / HikariCP"| JavaDB
   Scheduler -->|"JDBC<br/>read failed_sync_events<br/>update retry status"| JavaDB
-  Web1 -->|"verify Google ID token"| Google
-  Web2 -->|"verify Google ID token"| Google
-  Web3 -->|"verify Google ID token"| Google
+  JavaApp -->|"verify Google ID token"| Google
 
   %% Java Core to Rust Engine
-  Web1 -->|"gRPC + x-api-key<br/>UserSyncService<br/>QuizSyncService<br/>LeagueService"| RustSvc
-  Web2 -->|"gRPC + x-api-key"| RustSvc
-  Web3 -->|"gRPC + x-api-key"| RustSvc
-  Scheduler -->|"retry sync<br/>gRPC + x-api-key"| RustSvc
-  RustSvc -->|"routes to runtime"| RustApp
-  RustApp -->|"internal REST + x-api-key<br/>/api/internal/articles/{article_id}/exists"| JavaSvc
+  JavaApp -->|"gRPC + x-api-key<br/>UserSyncService<br/>QuizSyncService<br/>LeagueService"| RustApp
+  Scheduler -->|"retry sync<br/>gRPC + x-api-key"| RustApp
+  RustApp -->|"internal REST + x-api-key<br/>/api/internal/articles/{article_id}/exists"| JavaApp
 
   %% Optional direct frontend to Rust Engine from env
   BFF -.->|"RUST_ENGINE_URL exists<br/>optional / planned direct call"| RustApp
 
   %% Rust Engine Persistence and Observability
+  JavaDB --- CorePgVol
   RustApp -->|"SQLx pool<br/>DATABASE_URL"| RustDB
   RustApp -->|"Redis connection<br/>REDIS_URL"| Redis
-  RustDB --- PgVol
+  RustDB --- EnginePgVol
   Redis --- RedisVol
   Prom -->|"GET /metrics"| RustApp
   RustApp -->|"OTLP traces"| Tempo
   RustApp -->|"errors / APM"| Sentry
 
   %% Config and Secret Injection
-  Config -. "envFrom" .-> Web1
-  Config -. "envFrom" .-> Web2
-  Config -. "envFrom" .-> Web3
-  Config -. "envFrom" .-> Scheduler
-  Secret -. "envFrom" .-> Web1
-  Secret -. "envFrom" .-> Web2
-  Secret -. "envFrom" .-> Web3
-  Secret -. "envFrom" .-> Scheduler
+  Env -.->|"env"| Next
+  Env -.->|"env"| JavaApp
+  Env -.->|"env"| Scheduler
+  Env -.->|"env"| RustApp
+  Secret -.->|"env"| JavaApp
+  Secret -.->|"env"| Scheduler
+  Secret -.->|"env"| RustApp
 
   %% CI/CD
   GitHub --> Actions
   Actions -->|"build and push image"| GHCR
-  GHCR -->|"deploy / pull image"| RustApp
+  GHCR -->|"pull images on EC2"| Docker
+  Docker -.->|"starts / restarts"| Next
+  Docker -.->|"starts / restarts"| JavaApp
+  Docker -.->|"starts / restarts"| Scheduler
+  Docker -.->|"starts / restarts"| RustApp
 
   %% Legend / Styling
   classDef user fill:#ffffff,stroke:#111827,stroke-width:2px,color:#111827;
@@ -300,14 +342,15 @@ flowchart TB
 
   class User user;
   class Google external;
-  class FRONT_HOST,K8S,RUST_HOST,PROD host;
+  class EC2,PROD host;
   class Next,Pages,BFF,FRONT_CONT frontend;
-  class Ingress,JavaSvc,Web1,Web2,Web3,Scheduler,Config,Secret,JAVA_DEPLOY java;
-  class RustSvc,RustApp,YOMU_NET rust;
-  class JavaDB,RustDB,Redis,PgVol,RedisVol,Cookie,Mock data;
-  class Internet infra;
+  class JavaApp,Scheduler,Env,Secret,JAVA_CONT java;
+  class RustApp,RUST_CONT rust;
+  class JavaDB,RustDB,Redis,CorePgVol,EnginePgVol,RedisVol,Cookie,Mock data;
+  class Internet,Nginx,Docker infra;
   class Prom,Tempo,Sentry,GitHub,Actions,GHCR,OBS,CICD support;
 ```
+![Deployment Diagram](content/docs/architecture/deployment-diagram.png)
 
 ### Translate & Localization
 
