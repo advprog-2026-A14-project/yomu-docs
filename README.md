@@ -780,76 +780,76 @@ erDiagram
 ### Container Diagram Modul Achievement      
 ```mermaid  
   flowchart TD
-    %% Definisi Aktor & Sistem Eksternal
-    Pelajar(["Pelajar"])
-    Admin(["Admin"])
-    JavaCore["Java Core Service<br/>(Port: 8081)"]
-    FE["Yomu Frontend<br/>(Next.js BFF)"]
+  %% Definisi Aktor & Sistem Eksternal
+  Pelajar(["Pelajar"])
+  Admin(["Admin"])
+  JavaCore["Java Core Service<br/>(Port: 8081)"]
+  FE["Yomu Frontend<br/>(Next.js BFF)"]
 
-    %% Relasi Aktor ke Frontend
-    Pelajar -->|"Melihat profil, progres misi,<br/>pilih title & klaim reward"| FE
-    Admin -->|"Membuat/mengedit/menghapus<br/>misi & pencapaian"| FE
+  %% Relasi Aktor ke Frontend
+  Pelajar -->|"Melihat profil, progres misi,<br/>pilih title & klaim reward"| FE
+  Admin -->|"Membuat/mengedit/menghapus<br/>misi & pencapaian"| FE
 
-    %% Input dari luar ke Rust Engine
-    FE -->|"REST API (JWT)<br/>GET/POST /api/v1/..."| GamaController
-    JavaCore -->|"Webhook (x-api-key)<br/>POST /api/internal/quiz-history/sync"| SyncController
+  %% Input dari luar ke Rust Engine
+  FE -->|"REST API (JWT)<br/>GET/POST /api/v1/..."| GamaController
+  JavaCore -->|"Webhook (x-api-key)<br/>POST /api/internal/quiz-history/sync"| SyncController
 
-    %% Batasan Container Rust Engine
-    subgraph Rust_Engine ["Rust Gamification Engine (Hexagonal Architecture)"]
+  %% Batasan Container Rust Engine
+  subgraph Rust_Engine ["Rust Gamification Engine (Hexagonal Architecture)"]
 
-        subgraph Presentation ["Presentation Layer"]
-            GamaController["Gamification Controllers<br/>(Public Axum API)"]
-            SyncController["Internal Sync Controllers<br/>(Axum Webhook API)"]
-        end
+      subgraph Presentation ["Presentation Layer"]
+          GamaController["Gamification Controllers<br/>(Public Axum API)"]
+          SyncController["Internal Sync Controllers<br/>(Axum Webhook API)"]
+      end
 
-        subgraph Application ["Application Layer"]
-            AchieveUC["Achievement Use Cases<br/>(Logika Milestone & Kategori)"]
-            MissionUC["Daily Mission Use Cases<br/>(Logika Progres Harian)"]
-        end
+      subgraph Application ["Application Layer"]
+          AchieveUC["Achievement Use Cases<br/>(Logika Milestone & Kategori)"]
+          MissionUC["Daily Mission Use Cases<br/>(Logika Progres Harian)"]
+      end
 
-        subgraph Infrastructure ["Infrastructure Layer"]
-            AchieveRepo["Achievement Repository<br/>(SQLx Adapter)"]
-            MissionRepo["Daily Mission Repository<br/>(SQLx Adapter)"]
-            JavaClient["Java Core API Adapter<br/>(Reqwest HTTP Client)"]
-        end
-    end
+      subgraph Infrastructure ["Infrastructure Layer"]
+          AchieveRepo["Achievement Repository<br/>(SQLx Adapter)"]
+          MissionRepo["Daily Mission Repository<br/>(SQLx Adapter)"]
+          JavaClient["Java Core API Adapter<br/>(Reqwest HTTP Client)"]
+      end
+  end
 
-    %% Database
-    subgraph Engine_DB ["Engine PostgreSQL"]
-        DB_Achieve[("Tabel:<br/>achievements<br/>user_achievements")]
-        DB_Mission[("Tabel:<br/>daily_missions<br/>user_missions")]
-    end
+  %% Database
+  subgraph Engine_DB ["Engine PostgreSQL"]
+      DB_Achieve[("Tabel:<br/>achievements<br/>user_achievements")]
+      DB_Mission[("Tabel:<br/>daily_missions<br/>user_missions")]
+  end
 
-    %% Alur Data Presentation -> Application
-    GamaController -->|"Eksekusi (Data Transfer Object)"| AchieveUC
-    GamaController -->|"Eksekusi (Data Transfer Object)"| MissionUC
-    SyncController -->|"Trigger evaluasi pencapaian"| AchieveUC
-    SyncController -->|"Trigger penambahan progres"| MissionUC
+  %% Alur Data Presentation -> Application
+  GamaController -->|"Eksekusi (Data Transfer Object)"| AchieveUC
+  GamaController -->|"Eksekusi (Data Transfer Object)"| MissionUC
+  SyncController -->|"Trigger evaluasi pencapaian"| AchieveUC
+  SyncController -->|"Trigger penambahan progres"| MissionUC
 
-    %% Alur Validasi Eksternal (Synchronous Pull)
-    AchieveUC -->|"Verifikasi article_id<br/>via Trait/Interface"| JavaClient
-    JavaClient -->|"GET /api/internal/articles/{id}/exists<br/>(Header: x-api-key)"| JavaCore
+  %% Alur Validasi Eksternal (Synchronous Pull)
+  AchieveUC -->|"Verifikasi article_id<br/>via Trait/Interface"| JavaClient
+  JavaClient -->|"GET /api/internal/articles/{id}/exists<br/>(Header: x-api-key)"| JavaCore
 
-    %% Alur Persistensi
-    AchieveUC -->|"CRUD via Trait/Interface"| AchieveRepo
-    MissionUC -->|"CRUD via Trait/Interface"| MissionRepo
-    AchieveRepo -->|"Query SQL"| DB_Achieve
-    MissionRepo -->|"Query SQL"| DB_Mission
+  %% Alur Persistensi
+  AchieveUC -->|"CRUD via Trait/Interface"| AchieveRepo
+  MissionUC -->|"CRUD via Trait/Interface"| MissionRepo
+  AchieveRepo -->|"Query SQL"| DB_Achieve
+  MissionRepo -->|"Query SQL"| DB_Mission
 
-    %% Styling
-    classDef actor fill:#f8f9fa,stroke:#343a40,stroke-width:2px,color:#000;
-    classDef frontend fill:#00bcd4,stroke:#00838f,stroke-width:2px,color:#fff;
-    classDef java fill:#673ab7,stroke:#4527a0,stroke-width:2px,color:#fff;
-    classDef layer fill:#f1f8e9,stroke:#8bc34a,stroke-width:2px,color:#000,stroke-dasharray: 5 5;
-    classDef component fill:#e91e63,stroke:#880e4f,stroke-width:2px,color:#fff;
-    classDef adapter fill:#ff9800,stroke:#e65100,stroke-width:2px,color:#fff;
-    classDef database fill:#fff3e0,stroke:#f57c00,stroke-width:2px,color:#000;
+  %% Styling dengan kontras tinggi
+  classDef actor fill:#ffffff,stroke:#000000,stroke-width:2px,color:#000000;
+  classDef frontend fill:#007acc,stroke:#004c91,stroke-width:2px,color:#ffffff;
+  classDef java fill:#4b0082,stroke:#230046,stroke-width:2px,color:#ffffff;
+  classDef layer fill:#e8f5e9,stroke:#388e3c,stroke-width:2px,color:#000000,stroke-dasharray: 5 5;
+  classDef component fill:#c2185b,stroke:#880e4f,stroke-width:2px,color:#ffffff;
+  classDef adapter fill:#ff6f00,stroke:#e65100,stroke-width:2px,color:#ffffff;
+  classDef database fill:#fff3e0,stroke:#f57c00,stroke-width:2px,color:#000000;
 
-    class Pelajar,Admin actor;
-    class FE frontend;
-    class JavaCore java;
-    class Presentation,Application,Infrastructure layer;
-    class GamaController,SyncController,AchieveUC,MissionUC,AchieveRepo,MissionRepo component;
-    class JavaClient adapter;
-    class DB_Achieve,DB_Mission database;  
+  class Pelajar,Admin actor;
+  class FE frontend;
+  class JavaCore java;
+  class Presentation,Application,Infrastructure layer;
+  class GamaController,SyncController,AchieveUC,MissionUC,AchieveRepo,MissionRepo component;
+  class JavaClient adapter;
+  class DB_Achieve,DB_Mission database;
 ```
