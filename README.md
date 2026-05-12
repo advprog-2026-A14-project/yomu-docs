@@ -200,11 +200,11 @@ graph TB
     Outbox -.->|Webhook Push| Gamification
     Gamification -.->|Sync Pull| Auth
 
-    %% Styling
-    classDef frontend fill:#e0f7fa,stroke:#006064,stroke-width:2px;
-    classDef core fill:#ede7f6,stroke:#4527a0,stroke-width:2px;
-    classDef engagement fill:#fce4ec,stroke:#880e4f,stroke-width:2px;
-    classDef platform fill:#fff3e0,stroke:#e65100,stroke-width:2px;
+    %% Updated Styling for Better Readability
+    classDef frontend fill:#00bcd4,stroke:#00838f,stroke-width:2px,color:#fff;
+    classDef core fill:#673ab7,stroke:#4527a0,stroke-width:2px,color:#fff;
+    classDef engagement fill:#e91e63,stroke:#880e4f,stroke-width:2px,color:#fff;
+    classDef platform fill:#ff9800,stroke:#e65100,stroke-width:2px,color:#fff;
 
     class UI,BFF frontend;
     class Auth,Content,CoreDB core;
