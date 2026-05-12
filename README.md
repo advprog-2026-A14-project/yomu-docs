@@ -587,3 +587,190 @@ untuk isolasi domain (lihat Design Decisions di dokumentasi).
 
 **Poin penting:** Diagram ini adalah **target arsitektur**, bukan kondisi saat ini. Transisi dari
 deployment single-EC2 ke arsitektur ini memerlukan orkestrasi container (Kubernetes atau ECS).
+
+
+## Modul 9 Individu - Ahmad Anggara B P
+```mermaid
+flowchart TD
+    A[User / Client]
+
+    subgraph YB["Yomu Backend (Spring Boot)"]
+        direction TB
+
+        subgraph BK["bacaankuis Module"]
+
+            subgraph ARTICLE["Article Component"]
+                AC[ArticleController]
+                AS[ArticleService]
+                AR[ArticleRepository]
+
+                AC --> AS
+                AS --> AR
+            end
+
+            subgraph QUIZ["Quiz Component"]
+                QC[QuizController]
+                QS[QuizService]
+                UAR[UserAttemptRepository]
+
+                QC --> QS
+                QS --> UAR
+            end
+
+        end
+    end
+
+    subgraph DB["Database (PostgreSQL)"]
+        direction TB
+
+        A1[(Articles Table)]
+        Q1[(Quizzes Table)]
+        U1[(User Attempts Table)]
+    end
+
+    A --> YB
+
+    AR --> A1
+    QS --> Q1
+    UAR --> U1
+```
+
+---
+
+### 2. Code Diagram — Article Module
+
+```mermaid
+classDiagram
+
+    class ArticleController {
+        +list(category: String)
+        +detail(id: String)
+    }
+
+    class ArticleService {
+        +findAll(category: String)
+        +findById(id: String)
+        +checkArticleExists(id: String)
+    }
+
+    class ArticleRepository {
+        +findAll()
+        +findByCategoryIgnoreCase(category: String)
+        +findById(id: String)
+    }
+
+    class Article {
+        +id: String
+        +title: String
+        +content: String
+        +category: String
+    }
+
+    ArticleController --> ArticleService
+    ArticleService --> ArticleRepository
+    ArticleRepository --> Article
+```
+
+---
+
+### 3. Code Diagram — Quiz Module
+
+```mermaid
+classDiagram
+
+    class QuizController {
+        +getQuizzes(articleId: String)
+        +submitQuiz(articleId: String, req)
+    }
+
+    class QuizService {
+        +submitAndSync(request)
+        +validateRequest(request)
+    }
+
+    class UserAttemptRepository {
+        +existsByUserIdAndKuisId(userId, kuisId)
+        +save(attempt)
+    }
+
+    class Quiz {
+        +id: String
+        +articleId: String
+        +question: String
+        +answer: String
+    }
+
+    class UserAttempt {
+        +id: String
+        +userId: String
+        +quizId: String
+        +score: Integer
+    }
+
+    QuizController --> QuizService
+    QuizService --> UserAttemptRepository
+    QuizService --> Quiz
+    UserAttemptRepository --> UserAttempt
+```
+
+---
+
+### 4. Code Diagram — Quiz Submission Flow
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant QC as QuizController
+    participant QS as QuizService
+    participant UAR as UserAttemptRepository
+    participant DB as PostgreSQL
+
+    User->>QC: submitQuiz(articleId, request)
+    QC->>QS: submitAndSync(request)
+
+    QS->>QS: validateRequest(request)
+
+    QS->>UAR: existsByUserIdAndKuisId()
+    UAR->>DB: SELECT attempt
+    DB-->>UAR: result
+
+    QS->>UAR: save(attempt)
+    UAR->>DB: INSERT attempt
+
+    DB-->>UAR: success
+    UAR-->>QS: saved attempt
+    QS-->>QC: response
+    QC-->>User: quiz result
+```
+
+---
+
+### 5. Database ER Diagram
+
+```mermaid
+erDiagram
+
+    ARTICLES {
+        string id PK
+        string title
+        string content
+        string category
+    }
+
+    QUIZZES {
+        string id PK
+        string article_id FK
+        string question
+        string answer
+    }
+
+    USER_ATTEMPTS {
+        string id PK
+        string user_id
+        string quiz_id FK
+        int score
+    }
+
+    ARTICLES ||--o{ QUIZZES : contains
+    QUIZZES ||--o{ USER_ATTEMPTS : attempted_by
+```
