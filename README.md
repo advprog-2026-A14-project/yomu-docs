@@ -349,7 +349,78 @@ flowchart TB
   class JavaDB,RustDB,Redis,CorePgVol,EnginePgVol,RedisVol,Cookie,Mock data;
   class Internet,Nginx,Docker infra;
   class Prom,Tempo,Sentry,GitHub,Actions,GHCR,OBS,CICD support;
-```
+```  
+  
+## Context Diagram
+flowchart TD
+    %% Definisi Aktor
+    Pelajar(["Pelajar"])
+    Admin(["Admin"])
+
+    %% Definisi Sistem Eksternal
+    GoogleSSO["Google OAuth\n(Layanan Eksternal)"]
+    Observability["Sistem Observability\n(Sentry, Prometheus, Tempo)"]
+
+    %% Definisi Batasan Sistem Yomu
+    subgraph Yomu System ["Sistem Yomu (Platform Pembelajaran Poliglot)"]
+        FE["Yomu Frontend\n(Next.js App Router & BFF)"]
+        
+        %% Core Java
+        JC["Java Core Service\n(Spring Boot 4)"]
+        Scheduler["Java Outbox Scheduler\n(Retry Job)"]
+        
+        %% Engine Rust
+        RE["Rust Gamification Engine\n(Axum & Tonic)"]
+
+        %% Definisi Database
+        JDB[("Core DB\n(PostgreSQL)")]
+        RDB[("Engine DB\n(PostgreSQL)")]
+        RC[("Redis Cache")]
+    end
+
+    %% Relasi Aktor
+    Pelajar -- "Mengakses UI aplikasi\n(HTTPS)" --> FE
+    Admin -- "Mengelola konten & sistem\n(HTTPS)" --> FE
+
+    %% Relasi Frontend
+    FE <--> "Mendapatkan ID Token\n(Popup/Redirect)" GoogleSSO
+    FE -- "REST API (JWT)\n(Auth, User, Bacaan, Forum)" --> JC
+    FE -. "REST API (Opsional/Planned)\n(Leaderboard, Clan, Misi)" .-> RE
+
+    %% Relasi Java Core
+    JC -- "Verifikasi ID Token Google" --> GoogleSSO
+    JC -- "Simpan kredensial, bacaan & event" --> JDB
+    JC -- "Sinkronisasi User, Quiz & Liga\n(gRPC + x-api-key)" --> RE
+    
+    %% Relasi Scheduler (Fault Tolerance)
+    Scheduler -- "Membaca failed_sync_events" --> JDB
+    Scheduler -- "Retry sinkronisasi gagal\n(gRPC + x-api-key)" --> RE
+
+    %% Relasi Rust Engine
+    RE -- "Verifikasi validitas artikel\n(Internal REST + x-api-key)" --> JC
+    RE -- "Simpan data Clan, Tier & Histori" --> RDB
+    RE -- "Cache data Leaderboard" --> RC
+
+    %% Relasi Observability (Logging & APM)
+    JC -. "Kirim Error & Trace" .-> Observability
+    RE -. "Kirim Metrics, Error & Trace" .-> Observability
+
+    %% Styling disesuaikan dengan Future Architecture Yomu Docs
+    classDef actor fill:#f8f9fa,stroke:#343a40,stroke-width:2px,color:#000;
+    classDef frontend fill:#00bcd4,stroke:#00838f,stroke-width:2px,color:#fff;
+    classDef core fill:#673ab7,stroke:#4527a0,stroke-width:2px,color:#fff;
+    classDef engagement fill:#e91e63,stroke:#880e4f,stroke-width:2px,color:#fff;
+    classDef database fill:#fff3e0,stroke:#f57c00,stroke-width:2px,color:#000;
+    classDef external fill:#fce4ec,stroke:#c2185b,stroke-width:2px,color:#000;
+    classDef support fill:#ff9800,stroke:#e65100,stroke-width:2px,color:#fff;
+
+    class Pelajar,Admin actor;
+    class FE frontend;
+    class JC,Scheduler core;
+    class RE engagement;
+    class JDB,RDB,RC database;
+    class GoogleSSO external;
+    class Observability support;  
 
 ### Translate & Localization
 
