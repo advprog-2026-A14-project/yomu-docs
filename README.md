@@ -350,7 +350,6 @@ flowchart TB
   class Internet,Nginx,Docker infra;
   class Prom,Tempo,Sentry,GitHub,Actions,GHCR,OBS,CICD support;
 ```
-![Deployment Diagram](content/docs/architecture/deployment-diagram.png)
 
 ### Translate & Localization
 
