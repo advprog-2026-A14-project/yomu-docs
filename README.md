@@ -157,6 +157,61 @@ graph TD
     B --> C[PostgreSQL]
 ```
 
+Future Architecture
+```
+graph TB
+    subgraph Frontend_Squad ["Tim Web Experience (Frontend Owner)"]
+        UI["Next.js (Client & SSR)"]
+        BFF["Next.js API Routes (BFF)"]
+    end
+
+    subgraph Core_Squad ["Tim Core & Content (Java Owner)"]
+        Auth["Auth & User Context"]
+        Content["Content & Forum Context"]
+        CoreDB[("PostgreSQL (Core_DB)")]
+    end
+
+    subgraph Engagement_Squad ["Tim Engagement (Rust Owner)"]
+        Gamification["Gamification Context"]
+        League["League Context"]
+        EngineDB[("PostgreSQL (Engine_DB)")]
+        Redis[("Redis Cache")]
+    end
+
+    subgraph Platform_Squad ["Tim Platform & SRE (Infra Owner)"]
+        Outbox["User Sync Context (Outbox)"]
+        Monitor["Observability (Grafana, Sentry)"]
+        EC2{{"AWS EC2 Deployment"}}
+    end
+
+    %% Relasi Alur Komunikasi
+    UI -->|HTTP/JSON| BFF
+    BFF -->|REST API| Auth
+    BFF -->|REST API| Content
+    BFF -->|REST API| Gamification
+    
+    Auth --> CoreDB
+    Content --> CoreDB
+    Gamification --> EngineDB
+    Gamification --> Redis
+    League --> EngineDB
+    
+    Auth -.->|Generate Event| Outbox
+    Outbox -.->|Webhook Push| Gamification
+    Gamification -.->|Sync Pull| Auth
+
+    %% Styling
+    classDef frontend fill:#e0f7fa,stroke:#006064,stroke-width:2px;
+    classDef core fill:#ede7f6,stroke:#4527a0,stroke-width:2px;
+    classDef engagement fill:#fce4ec,stroke:#880e4f,stroke-width:2px;
+    classDef platform fill:#fff3e0,stroke:#e65100,stroke-width:2px;
+
+    class UI,BFF frontend;
+    class Auth,Content,CoreDB core;
+    class Gamification,League,EngineDB,Redis engagement;
+    class Outbox,Monitor,EC2 platform;
+```
+
 ### Translate & Localization
 
 Semua konten dokumentasi ditulis dalam Bahasa Indonesia. Istilah teknis (JWT, OAuth, REST, API, BFF, DTO, CRUD, CI/CD, Redis, PostgreSQL, Docker, Kubernetes, Java, Rust, Next.js, Spring Boot, Axum, SQLx, JPA, Hibernate, dll.) tetap dalam Bahasa Inggris. Hanya narasi, penjelasan, deskripsi, dan heading yang diterjemahkan.
