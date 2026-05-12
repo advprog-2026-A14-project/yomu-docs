@@ -365,6 +365,7 @@ flowchart TB
   class Prom,Tempo,Sentry,GitHub,Actions,GHCR,OBS,CICD support;
 ```  
   
+  
 ## Context Diagram  
 ```mermaid
   flowchart TD
