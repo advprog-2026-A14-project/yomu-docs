@@ -449,6 +449,255 @@ The three diagrams and the future architecture view are used together as the bas
 
 Risk storming is applied because Yomu has several integration and operational risks that are easier to discover visually than from code alone. By walking through these diagrams, the team can identify risks around authentication, internal API trust, database ownership, user and quiz synchronization, retry behavior, Redis-backed leaderboard consistency, secret management, observability gaps, and the single-EC2 deployment as a potential availability and scaling bottleneck. This technique helps group A14 discuss risks early, assign ownership, and prioritize mitigations before implementation and deployment decisions become expensive to change.
 
+### Individual Works Auth (Rafa)
+
+Bagian ini memperluas container diagram kelompok dengan fokus pada pekerjaan individu Rafa di modul autentikasi `yomu-backend-java`. Scope utamanya adalah registrasi, login lokal, Google OAuth SSO, penerbitan JWT, validasi request terproteksi, dan sinkronisasi pengguna baru ke Rust engine melalui outbox fallback.
+
+#### Auth Container Diagram
+
+```mermaid
+flowchart TD
+  User["Pelajar / Admin"]
+  Browser["Browser / Mobile Web"]
+  Frontend["Yomu Frontend<br/>Next.js BFF"]
+  JavaAuth["Java Core Service<br/>Auth Container<br/>Spring Boot 4"]
+  CoreDB[("Core PostgreSQL<br/>users, failed_sync_events")]
+  Google["Google OAuth2<br/>tokeninfo / public keys"]
+  Rust["Rust Engine Service<br/>User Sync API"]
+  Obs["Observability<br/>Sentry / Prometheus / Tempo"]
+
+  User -->|"submit credentials / Google token"| Browser
+  Browser -->|"HTTPS"| Frontend
+  Frontend -->|"POST /api/v1/auth/register"| JavaAuth
+  Frontend -->|"POST /api/v1/auth/login"| JavaAuth
+  Frontend -->|"POST /api/v1/auth/google"| JavaAuth
+  JavaAuth -->|"JPA repository"| CoreDB
+  JavaAuth -->|"verify Google ID token"| Google
+  JavaAuth -->|"sync new user<br/>gRPC / internal HTTP + x-api-key"| Rust
+  JavaAuth -.->|"record failed sync"| CoreDB
+  JavaAuth -.->|"metrics, traces, errors"| Obs
+  JavaAuth -->|"JWT response"| Frontend
+  Frontend -->|"HttpOnly auth cookie"| Browser
+
+  classDef user fill:#ffffff,stroke:#111827,stroke-width:2px,color:#111827;
+  classDef frontend fill:#e8f1ff,stroke:#2563eb,stroke-width:2px,color:#111827;
+  classDef java fill:#fff1e6,stroke:#f97316,stroke-width:2px,color:#111827;
+  classDef data fill:#f5f3ff,stroke:#7c3aed,stroke-width:2px,color:#111827;
+  classDef external fill:#fff7ed,stroke:#ea580c,stroke-width:2px,color:#111827;
+  classDef rust fill:#ecfdf5,stroke:#16a34a,stroke-width:2px,color:#111827;
+  classDef support fill:#fce7f3,stroke:#db2777,stroke-width:2px,color:#111827;
+
+  class User,Browser user;
+  class Frontend frontend;
+  class JavaAuth java;
+  class CoreDB data;
+  class Google external;
+  class Rust rust;
+  class Obs support;
+```
+
+#### Auth Component Diagram
+
+```mermaid
+flowchart LR
+  subgraph AuthModule["yomu-backend-java auth module"]
+    Controller["AuthController<br/>REST endpoints"]
+    Service["AuthService<br/>business rules"]
+    Resolver["IdentifierResolver<br/>email / phone / username"]
+    UsernameGen["UsernameGenerator<br/>SSO username"]
+    Jwt["JwtService<br/>generate and validate JWT"]
+    GoogleVerifier["GoogleIdTokenVerifier<br/>REST implementation"]
+    Sync["AuthUserSyncService<br/>sync user to Rust"]
+    Repo["UserRepository<br/>Spring Data JPA"]
+    Outbox["OutboxService<br/>failed sync event"]
+    Password["BCryptPasswordEncoder"]
+  end
+
+  Controller --> Service
+  Service --> Resolver
+  Service --> UsernameGen
+  Service --> Jwt
+  Service --> GoogleVerifier
+  Service --> Sync
+  Service --> Repo
+  Service --> Password
+  Sync --> Outbox
+  Sync -->|"internal sync"| RustEngine["Rust Engine Client"]
+  Repo --> CoreDB[("Core PostgreSQL")]
+  Outbox --> CoreDB
+```
+
+#### Code Diagram 1: Auth Class Relationships
+
+```mermaid
+classDiagram
+  class AuthController {
+    +register(RegisterRequest)
+    +login(LoginRequest)
+    +googleLogin(GoogleLoginRequest)
+  }
+
+  class AuthService {
+    +registerLocal(RegisterRequest) AuthResponseData
+    +login(LoginRequest) AuthResponseData
+    +googleLogin(GoogleLoginRequest) AuthResponseData
+    -buildAuthResponse(UserEntity) AuthResponseData
+  }
+
+  class UserEntity {
+    +UUID userId
+    +String username
+    +String displayName
+    +String email
+    +String phoneNumber
+    +String passwordHash
+    +Role role
+    +String googleSub
+    +Instant deletedAt
+  }
+
+  class UserRepository {
+    +findByEmailAndDeletedAtIsNull(String)
+    +findByPhoneNumberAndDeletedAtIsNull(String)
+    +findByUsernameAndDeletedAtIsNull(String)
+    +findByGoogleSub(String)
+    +save(UserEntity)
+  }
+
+  class JwtService {
+    +generateToken(UserEntity) String
+    +validateToken(String) boolean
+    +extractUserId(String) UUID
+    +extractRole(String) Role
+  }
+
+  class GoogleIdTokenVerifier {
+    +verify(String) GoogleUserInfo
+  }
+
+  class AuthUserSyncService {
+    +syncNewUser(UUID)
+  }
+
+  AuthController --> AuthService
+  AuthService --> UserRepository
+  AuthService --> JwtService
+  AuthService --> GoogleIdTokenVerifier
+  AuthService --> AuthUserSyncService
+  UserRepository --> UserEntity
+```
+
+#### Code Diagram 2: Local Register and Login Flow
+
+```mermaid
+sequenceDiagram
+  actor Client
+  participant Controller as AuthController
+  participant Service as AuthService
+  participant Resolver as IdentifierResolver
+  participant Repo as UserRepository
+  participant Password as BCryptPasswordEncoder
+  participant Jwt as JwtService
+  participant Sync as AuthUserSyncService
+
+  alt Register local user
+    Client->>Controller: POST /api/v1/auth/register
+    Controller->>Service: registerLocal(request)
+    Service->>Repo: validate unique username/email/phone
+    Service->>Password: encode(password)
+    Service->>Repo: save(UserEntity)
+    Service->>Jwt: generateToken(user)
+    Service->>Sync: syncNewUser(userId)
+    Service-->>Controller: AuthResponseData
+    Controller-->>Client: 200 OK + JWT
+  else Login local user
+    Client->>Controller: POST /api/v1/auth/login
+    Controller->>Service: login(request)
+    Service->>Resolver: resolve(identifier)
+    Resolver-->>Service: EMAIL / PHONE_NUMBER / USERNAME
+    Service->>Repo: find active user by identifier
+    Service->>Password: matches(rawPassword, passwordHash)
+    Service->>Jwt: generateToken(user)
+    Service-->>Controller: AuthResponseData
+    Controller-->>Client: 200 OK + JWT
+  end
+```
+
+#### Code Diagram 3: Google OAuth SSO Flow
+
+```mermaid
+sequenceDiagram
+  actor Client
+  participant Controller as AuthController
+  participant Service as AuthService
+  participant Google as GoogleIdTokenVerifier
+  participant Username as UsernameGenerator
+  participant Repo as UserRepository
+  participant Jwt as JwtService
+  participant Sync as AuthUserSyncService
+
+  Client->>Controller: POST /api/v1/auth/google
+  Controller->>Service: googleLogin(idToken, username?, displayName?)
+  Service->>Google: verify(idToken)
+  Google-->>Service: GoogleUserInfo(sub, email, name)
+  Service->>Repo: findByGoogleSub(sub)
+  alt Existing Google user
+    Repo-->>Service: UserEntity
+  else First Google login
+    Service->>Username: generate(email, requestedUsername)
+    Service->>Repo: save(UserEntity with passwordHash null)
+    Service->>Sync: syncNewUser(userId)
+  end
+  Service->>Jwt: generateToken(user)
+  Service-->>Controller: AuthResponseData
+  Controller-->>Client: 200 OK + JWT
+```
+
+#### Code Diagram 4: JWT Validation for Protected Requests
+
+```mermaid
+sequenceDiagram
+  actor Client
+  participant Filter as JwtAuthFilter
+  participant Jwt as JwtService
+  participant Repo as UserRepository
+  participant Security as SecurityContext
+  participant Controller as ProtectedController
+
+  Client->>Filter: GET /api/v1/users/me<br/>Authorization: Bearer JWT
+  Filter->>Jwt: validateToken(token)
+  Jwt-->>Filter: valid claims
+  Filter->>Jwt: extractUserId(token)
+  Filter->>Repo: find active user by id
+  Repo-->>Filter: UserEntity
+  Filter->>Security: set Authentication(userId, role)
+  Filter->>Controller: continue filter chain
+  Controller-->>Client: protected response
+```
+
+#### Code Diagram 5: User Sync and Outbox Fallback
+
+```mermaid
+sequenceDiagram
+  participant Auth as AuthService
+  participant Sync as AuthUserSyncService
+  participant Rust as RustEngineClient
+  participant Outbox as OutboxService
+  participant DB as Core PostgreSQL
+
+  Auth->>Sync: syncNewUser(userId)
+  Sync->>Rust: send user sync event
+  alt Rust accepts event
+    Rust-->>Sync: 200 / 201
+    Sync-->>Auth: synced
+  else timeout or retryable error after maxAttempts
+    Rust--x Sync: failure
+    Sync->>Outbox: recordUserSyncFailure(userId)
+    Outbox->>DB: insert failed_sync_events<br/>event_type USER_SYNC
+    Sync-->>Auth: recorded for retry
+  end
+```
+
 ### Translate & Localization
 
 Semua konten dokumentasi ditulis dalam Bahasa Indonesia. Istilah teknis (JWT, OAuth, REST, API, BFF, DTO, CRUD, CI/CD, Redis, PostgreSQL, Docker, Kubernetes, Java, Rust, Next.js, Spring Boot, Axum, SQLx, JPA, Hibernate, dll.) tetap dalam Bahasa Inggris. Hanya narasi, penjelasan, deskripsi, dan heading yang diterjemahkan.
