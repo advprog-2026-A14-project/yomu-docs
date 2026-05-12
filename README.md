@@ -158,7 +158,7 @@ graph TD
 ```
 
 Future Architecture
-```
+```mermaid
 graph TB
     subgraph Frontend_Squad ["Tim Web Experience (Frontend Owner)"]
         UI["Next.js (Client & SSR)"]
