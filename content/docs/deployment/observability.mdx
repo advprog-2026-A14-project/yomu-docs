@@ -32,10 +32,10 @@ flowchart LR
     PgExp -->|scrape| Prom
     RdExp -->|scrape| Prom
 
-    OTel -->|metrics (remote-write)| Prom
-    OTel -->|logs (push)| Loki
-    OTel -->|traces (OTLP)| Tempo
-    Tempo -.->|span metrics\nremote-write| Prom
+    OTel -->|"metrics remote-write"| Prom
+    OTel -->|"logs push"| Loki
+    OTel -->|"traces OTLP"| Tempo
+    Tempo -.->|"span metrics\nremote-write"| Prom
 
     Graf --> Prom
     Graf --> Loki
