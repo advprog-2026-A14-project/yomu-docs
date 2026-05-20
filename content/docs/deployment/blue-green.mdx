@@ -1,0 +1,139 @@
+---
+title: Blue-Green Deployment
+description: Strategi zero-downtime deployment menggunakan Traefik, dua environment identik, dan file-based routing switch
+---
+
+Blue-green deployment memastikan rilis versi baru tanpa downtime dengan memelihara dua environment identik (blue dan green). Hanya satu environment yang menerima trafik produksi pada satu waktu.
+
+## Alur Kerja Blue-Green
+
+```mermaid
+sequenceDiagram
+    actor Ops as Operator
+    participant Blue as 🔵 Blue Environment
+    participant Green as 🟢 Green Environment
+    participant Traefik as Traefik Proxy
+    participant DB as PostgreSQL + Redis
+    participant User as Pengguna
+
+    Note over Blue,Green: Produksi dimulai dengan Blue aktif
+    User->>Traefik: yomu.my.id
+    Traefik->>Blue: Route ke Blue
+
+    Ops->>Green: Deploy versi baru
+    Green->>DB: Test koneksi database
+    Ops->>Green: Jalankan smoke test
+
+    alt Deploy berhasil
+        Ops->>Traefik: Switch ke Green
+        Traefik->>Green: Route semua trafik ke Green
+        User->>Traefik: yomu.my.id
+        Traefik->>Green: Trafik produksi ke Green
+        Note over Blue: Blue tetap berjalan
+        Ops->>Blue: Observe selama 1 jam
+    else Deploy gagal
+        Ops->>Traefik: Rollback ke Blue
+        Traefik->>Blue: Kembalikan trafik ke Blue
+        Note over Green: Green tetap ada untuk debugging
+    end
+```
+
+## State Machine Deployment
+
+```mermaid
+stateDiagram-v2
+    [*] --> BlueActive: Deploy awal
+    BlueActive --> GreenDeploying: Deploy Green
+    GreenDeploying --> SmokeTests: Deploy OK
+    SmokeTests --> GreenActive: Trafik switch ke Green
+    SmokeTests --> BlueActive: Deploy gagal (abort)
+    GreenActive --> BlueActive: Rollback
+    BlueActive --> GreenDeploying: Deploy Green lagi
+    GreenActive --> BlueDeploying: Deploy Blue
+    BlueDeploying --> SmokeTests: OK
+    SmokeTests --> BlueActive: Switch ke Blue
+    BlueDeploying --> GreenActive: Deploy gagal
+```
+
+## File Konfigurasi Routing
+
+Traefik mengawasi folder `/etc/traefik/dynamic/`. Switch dilakukan dengan mengganti file `routing.yml` dengan isi dari `blue-active.yml` atau `green-active.yml`:
+
+```bash
+cp traefik/dynamic/green-active.yml traefik/dynamic/routing.yml
+docker kill --signal=HUP traefik
+```
+
+Perubahan routing tanpa restart container, bersifat seketika.
+
+### Contoh `blue-active.yml`
+
+```yaml
+http:
+  routers:
+    frontend-router:
+      rule: "Host(`yomu.my.id`) || PathPrefix(`/`)"
+      service: frontend-blue
+      entryPoints:
+        - web
+    java-router:
+      rule: "PathPrefix(`/api/java`)"
+      service: java-blue
+      middlewares:
+        - strip-java-prefix
+  middlewares:
+    strip-java-prefix:
+      stripPrefix:
+        prefixes:
+          - "/api/java"
+  services:
+    frontend-blue:
+      loadBalancer:
+        servers:
+          - url: "http://frontend-blue:3000"
+    java-blue:
+      loadBalancer:
+        servers:
+          - url: "http://java-blue:8080"
+```
+
+## Skrip Deployment
+
+| Skrip | Fungsi |
+|-------|--------|
+| `./scripts/deploy-blue.sh` | Deploy environment Blue, tunggu health |
+| `./scripts/deploy-green.sh` | Deploy environment Green, tunggu health |
+| `./scripts/switch-traffic.sh blue` | Alihkan trafik produksi ke Blue |
+| `./scripts/switch-traffic.sh green` | Alihkan trafik produksi ke Green |
+| `./scripts/rollback.sh` | Deteksi environment aktif, rollback ke lawannya |
+| `./scripts/full-deploy.sh --target green --image-tag v1.2.0` | Pipeline lengkap: deploy, health check, smoke test, switch |
+
+### Pipeline Full Deploy
+
+```mermaid
+flowchart LR
+    Deploy["Deploy ke\ninactive env"] --> Health["Health check\n(container status)"]
+    Health --> Smoke["Smoke test\n(k6 / curl)"]
+    Smoke --> Switch["Switch trafik\n(Traefik HUP)"]
+    Smoke --x|FAIL| Abort["Abort\nactive env tetap"]
+    Switch --> Observe["Observe 1 jam"]
+    Observe --> Stable["Downtime\nold env"]
+    Observe -->|FAIL| Rollback["Rollback\nswitch balik"]
+```
+
+## Manfaat Blue-Green
+
+| Manfaat | Deskripsi |
+|---------|-----------|
+| **Zero Downtime** | Peralihan trafik seketika tanpa interrupt |
+| **Rollback Instan** | Kembalikan ke environment sebelumnya dalam 1 detik |
+| **Safe Testing** | Uji versi baru dengan trafik nyata sebelum switch |
+| **Isolasi Lengkap** | Blue dan Green tidak berbagi runtime — port, jaringan, dan proses terpisah |
+| **Recovery Cepat** | Jika Green gagal, Blue tetap siap melayani |
+
+## Praktik Terbaik
+
+- Setelah switch ke environment baru, biarkan environment lama tetap berjalan selama **1–2 jam** untuk memastikan stabilitas sebelum dihentikan.
+- Jalankan **smoke test** (via skrip atau k6) sebelum switch.
+- Gunakan **monitoring** aktif pada saat switch untuk mendeteksi lonjakan error rate atau latency.
+- Environment yang tidak aktif dapat dijadikan **staging sementara** untuk pengujian internal.

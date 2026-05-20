@@ -1,0 +1,10 @@
+{
+  "title": "Deployment",
+  "pages": [
+    "index",
+    "blue-green",
+    "observability",
+    "network",
+    "domain"
+  ]
+}

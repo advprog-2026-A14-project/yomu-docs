@@ -1,0 +1,123 @@
+---
+title: Jaringan & Isolasi
+description: Arsitektur jaringan Docker, isolasi environment, dan routing internal
+---
+
+Platform Yomu menggunakan **empat jaringan Docker bridge** untuk mengisolasi lalu lintas antar environment produksi, staging, dan infrastruktur bersama.
+
+## Arsitektur Jaringan
+
+```mermaid
+flowchart LR
+    subgraph Shared["yomu-shared-network"]
+        direction TB
+        S1["Traefik"]
+        S2["PostgreSQL"]
+        S3["Redis"]
+        S4["Prometheus"]
+        S5["Grafana"]
+        S6["Loki"]
+        S7["Tempo"]
+        S8["OTEL Collector"]
+        S9["Exporters"]
+    end
+
+    subgraph BlueNet["yomu-blue-network"]
+        B1["frontend-blue"]
+        B2["java-blue"]
+        B3["rust-blue"]
+    end
+
+    subgraph GreenNet["yomu-green-network"]
+        G1["frontend-green"]
+        G2["java-green"]
+        G3["rust-green"]
+    end
+
+    subgraph StageNet["yomu-staging-network"]
+        ST1["frontend-staging"]
+        ST2["java-staging"]
+        ST3["rust-staging"]
+    end
+
+    Traefik --> Shared
+    Traefik --> BlueNet
+    Traefik --> GreenNet
+    Traefik --> StageNet
+
+    B1 <--> B2 <--> B3
+    G1 <--> G2 <--> G3
+    ST1 <--> ST2 <--> ST3
+
+    B1 <--> S1
+    G1 <--> S1
+    ST1 <--> S1
+
+    B2 <--> S2 & S3
+    G2 <--> S2 & S3
+    ST2 <--> S2 <--> ST3
+```
+
+## Isolasi Jaringan
+
+| Jaringan | Anggota | Tujuan |
+|----------|---------|--------|
+| `yomu-shared-network` | Semua infrastructure + semua apps | Service discovery, akses DB, telemetry |
+| `yomu-blue-network` | `frontend-blue`, `java-blue`, `rust-blue`, Traefik | Komunikasi internal Blue |
+| `yomu-green-network` | `frontend-green`, `java-green`, `rust-green`, Traefik | Komunikasi internal Green |
+| `yomu-staging-network` | `frontend-staging`, `java-staging`, `rust-staging`, Traefik | Komunikasi internal Staging |
+
+### Aturan Isolasi
+
+- **Blue dan Green tidak bisa bicara langsung** — mereka tidak berbagi jaringan yang sama (kecuali shared).
+- Traefik adalah **satu-satunya gateway** yang menghubungkan keempat jaringan.
+- Routing ke Blue atau Green aktif hanya melalui file konfigurasi Traefik (`routing.yml`).
+- Staging menggunakan `Host(staging.yomu.my.id)` sehingga tidak pernah konflik dengan produksi (`yomu.my.id`).
+
+## Port Expose
+
+| Layanan | Port Publik (Host) | Port Internal (Container) |
+|---------|-------------------|---------------------------|
+| Traefik Web | :80 | :80 |
+| Traefik WebSecure | :443 | :443 |
+| Traefik Dashboard | :3001 | :8080 |
+| Prometheus | :9090 | :9090 |
+| Grafana | — (via Traefik /grafana) | :3000 |
+| Loki | :3100 | :3100 |
+| Tempo | — (internal only) | :3200, :4317, :4318 |
+| OTEL Collector | — (internal only) | :4317, :4318, :8889 |
+| postgres-exporter | — (internal only) | :9187 |
+| redis-exporter | — (internal only) | :9121 |
+
+**Aplikasi production, staging, blue, green** tidak memiliki port mapping ke host — semua akses melalui Traefik reverse proxy.
+
+## Routing Internal Antar Service
+
+```mermaid
+sequenceDiagram
+    participant FE as frontend-blue
+    participant TF as Traefik
+    participant JB as java-blue
+    participant RB as rust-blue
+    participant PG as PostgreSQL
+    participant RD as Redis
+
+    FE->>JB: CORE_API_BASE_URL=http://java-blue:8080
+    JB->>RB: RUST_ENGINE_BASE_URL=http://rust-blue:8080
+    JB->>PG: jdbc:postgresql://postgres:5432/yomu_db
+    RB->>PG: DATABASE_URL=postgresql://.../yomu_engine
+    RB->>RD: REDIS_URL=redis://redis:6379
+    JB->>JB: /actuator/prometheus (Prometheus scrape)
+    RB->>RB: /metrics (Prometheus scrape)
+```
+
+## Discovery
+
+Semua service discovery menggunakan **nama service Docker** (bukan IP statis):
+
+- `java-blue` → `yomu-blue-network`
+- `postgres` → `yomu-shared-network`
+- `redis` → `yomu-shared-network`
+- `otel-collector` → `yomu-shared-network`
+
+Docker Compose secara otomatis membuat DNS entries untuk setiap nama service pada setiap jaringan yang mereka ikuti.
