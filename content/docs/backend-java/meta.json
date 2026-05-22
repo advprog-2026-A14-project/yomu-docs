@@ -4,6 +4,7 @@
     "index",
     "auth",
     "user-management",
+    "forum",
     "outbox"
   ]
 }
