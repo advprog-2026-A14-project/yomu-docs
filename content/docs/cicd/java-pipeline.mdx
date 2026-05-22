@@ -1,10 +1,9 @@
 ---
-title: Java Pipeline
-description: CI/CD backend Java — PMD, JaCoCo, OWASP, build Docker, dan deployment Heroku
+title: Pipeline Java
+description: CI/CD backend Java — PMD, JaCoCo, OWASP, build Docker, dan deployment VPS Swarm
 ---
 
-
-Backend Java menggunakan Gradle Kotlin DSL dengan Java 21 dan Spring Boot 4.0.2. Pipeline terdiri dari lima file workflow dengan quality gate untuk kode, keamanan, dan artifact Docker.
+Backend Java menggunakan Gradle Kotlin DSL dengan Java 21 dan Spring Boot 4.0.2. Pipeline terdiri dari empat file workflow dengan quality gate untuk kode, keamanan, dan artifact Docker. Deployment kini melalui GHCR → yomu-deployment → VPS Docker Swarm.
 
 ```mermaid
 flowchart TD
@@ -33,101 +32,128 @@ flowchart TD
     end
 
     subgraph CD
-        E3 --> F[workflow_run success]
-        F --> F1[cd.yml triggers]
-        F1 --> F2[Heroku deploy]
-        F2 --> F3[staging: yomu-backend-staging]
-        F2 --> F4[production: yomu-backend]
+        E3 --> F[repository_dispatch]
+        F --> F1[yomu-deployment/deploy-production.yml]
+        F1 --> F2[SSH ke VPS GCP]
+        F2 --> F3[docker stack deploy]
+        F3 --> F4[VPS 34.101.41.6]
     end
 
     style A fill:#f9f,stroke:#333,stroke-width:2px
     style FAIL1 fill:#ff9,stroke:#333,stroke-width:2px
     style FAIL2 fill:#ff9,stroke:#333,stroke-width:2px
     style FAIL3 fill:#ff9,stroke:#333,stroke-width:2px
-    style F3 fill:#9f9,stroke:#333,stroke-width:2px
     style F4 fill:#9f9,stroke:#333,stroke-width:2px
 ```
 
-## Workflow Files
+## File Workflow
 
 <Cards>
 <Card title="ci.yml" icon="play">
-Runs on push/PR to main. Executes Gradle check task. Triggers pmd.yml via workflow_dispatch if passed.
+Jalankan pada push/PR ke main. Menjalankan tugas Gradle check. Memicu pmd.yml via workflow_dispatch jika lulus.
 </Card>
 <Card title="pmd.yml" icon="linters">
-PMD 7.0.0 with `rulesMinimumPriority=5`. JaCoCo coverage report. Fails on code quality issues or coverage below 80%.
+PMD 7.0.0 dengan `rulesMinimumPriority=5`. Laporan coverage JaCoCo. Gagal pada masalah kualitas kode atau coverage di bawah 80%.
 </Card>
 <Card title="security-audit.yml" icon="shield">
-OWASP DepCheck with `failBuildOnCVSS=9.0`. SARIF upload to GitHub Security tab. Runs weekly and on manual dispatch.
+OWASP DepCheck dengan `failBuildOnCVSS=9.0`. Upload SARIF ke tab GitHub Security. Berjalan mingguan dan pada dispatch manual.
 </Card>
 <Card title="release.yml" icon="package">
-Tags Docker images with semver. Pushes to GHCR. Triggers after successful CI. Uses multi-stage build.
-</Card>
-<Card title="cd.yml" icon="cloud">
-Triggers on `workflow_run` success from ci.yml. Deploys to Heroku with deploy tags (staging/production). URLs included below.
+Tag Docker image dengan semver. Push ke GHCR. Memicu setelah CI sukses. Menggunakan multi-stage build. Mengirim repository_dispatch ke yomu-deployment.
 </Card>
 </Cards>
 
-## Java Quality Gates
+## Quality Gate Java
 
 <Cards>
-<Card title="PMD Rules" icon="checklist">
-- No unused variables, methods, or imports
-- Avoid short methods (length > 30)
-- No empty catch blocks
-- No local variable naming conflicts
-- All rules set to priority 5 (minimum)
+<Card title="Aturan PMD" icon="checklist">
+- Tidak ada variabel, metode, atau import yang tidak digunakan
+- Hindari metode pendek (panjang > 30)
+- Tidak ada catch block kosong
+- Tidak ada konflik penamaan variabel lokal
+- Semua aturan diatur ke prioritas 5 (minimum)
 </Card>
-<Card title="JaCoCo Coverage" icon="chart">
+<Card title="Coverage JaCoCo" icon="chart">
 - Minimum branch coverage: 80%
 - Minimum line coverage: 80%
-- Coverage reports in `build/reports/jacoco`
-- Fails build if thresholds not met
+- Laporan coverage di `build/reports/jacoco`
+- Gagal build jika threshold tidak terpenuhi
 </Card>
 <Card title="OWASP CVSS" icon="radar">
-- CVSS severity threshold: ≥9.0
-- Blocks build if critical vulnerabilities found
-- SARIF results available in GitHub Security tab
-- Weekly scheduled scans
+- Threshold severity CVSS: ≥9.0
+- Memblokir build jika ditemukan kerentanan kritis
+- Hasil SARIF tersedia di tab GitHub Security
+- Scan terjadwal mingguan
 </Card>
 </Cards>
 
-## Java Build Tools
+## Alat Build Java
 
-| Tool | Version | Purpose |
+| Alat | Versi | Tujuan |
 |------|---------|---------|
-| Gradle | Kotlin DSL | Build orchestrator, test runner |
-| Java | 21 | Runtime and compile target |
+| Gradle | Kotlin DSL | Orkestrator build, runner test |
+| Java | 21 | Runtime dan target compile |
 | Spring Boot | 4.0.2 | Web framework |
-| H2 | In-memory | Test database |
-| JUnit 5 | Latest | Unit testing |
-| PMD | 7.0.0 | Static code analysis |
-| JaCoCo | Latest | Code coverage |
-| OWASP DepCheck | Latest | Dependency vuln scanning |
-| Docker | Multi-stage | Image optimization |
+| H2 | In-memory | Database test |
+| JUnit 5 | Terbaru | Unit testing |
+| PMD | 7.0.0 | Analisis kode statis |
+| JaCoCo | Terbaru | Code coverage |
+| OWASP DepCheck | Terbaru | Scanning vuln dependency |
+| Docker | Multi-stage | Optimasi image |
 
-## Quality Gate Failures (Simulated)
+## Kegagalan Quality Gate (Simulasi)
 
 <Cards>
-<Card title="Missing Test Case" icon="failure">
-PMD flags: Unused method, empty catch block, local variable naming conflict. Build fails.
+<Card title="Test Case Hilang" icon="failure">
+PMD menandai: Metode tidak digunakan, catch block kosong, konflik penamaan variabel lokal. Build gagal.
 </Card>
-<Card title="Coverage Drop" icon="drop">
-JaCoCo reports 75% branch coverage (threshold: 80%). Build fails. Coverage report generated.
+<Card title="Penurunan Coverage" icon="drop">
+JaCoCo melaporkan 75% branch coverage (threshold: 80%). Build gagal. Laporan coverage dihasilkan.
 </Card>
-<Card title="Vulnerable Dependency" icon="vuln">
-OWASP detects Log4j CVE-2021-44228 (CVSS 10.0). Build blocks. SARIF uploaded to GitHub Security tab.
+<Card title="Dependency Rentan" icon="vuln">
+OWASP mendeteksi Log4j CVE-2021-44228 (CVSS 10.0). Build diblokir. SARIF diupload ke GitHub Security tab.
 </Card>
 </Cards>
 
-## Deployment URLs
+## Deployment
 
-| Environment | URL | Tag Pattern |
-|-------------|-----|-------------|
-| Staging | `https://yomu-backend-staging.herokuapp.com` | `deploy/staging/YYYYMMDD-HHMMSS-SHA` |
-| Production | `https://yomu-backend.herokuapp.com` | `deploy/production/YYYYMMDD-HHMMSS-SHA` |
+<Cards>
+<Card title="Image Registry" icon="registry">
+Image: `ghcr.io/advprog-2026-a14-project/yomu-backend-java:main` (production) atau `:staging` (staging)
+</Card>
+<Card title="Trigger Deploy" icon="trigger">
+Setelan CI mengirim `repository_dispatch` ke repo yomu-deployment untuk memicu deploy ke VPS. Event type: `deploy-trigger` dengan payload `image_tag`.
+</Card>
+<Card title="Target Deployment" icon="server">
+VPS GCP 34.101.41.6, user: pongo. Deploy via `docker stack deploy -c docker-compose.swarm.yml yomu`.
+</Card>
+</Cards>
 
-## Docker Build
+## Alur CD
+
+1. **Release Workflow** — Setelah CI lulus, `release.yml` membuild Docker image dan push ke GHCR
+2. **Repository Dispatch** — Workflow mengirim event ke yomu-deployment dengan payload:
+   ```json
+   {
+     "image_tag": "main"
+   }
+   ```
+3. **Deploy Trigger** — `deploy-production.yml` di yomu-deployment menerima event `repository_dispatch`
+4. **SSH Connection** — Workflow menggunakan `appleboy/ssh-action` untuk SSH ke VPS
+5. **Stack Deploy** — Menjalankan `docker stack deploy` dengan image tag yang sesuai
+6. **Rolling Update** — Docker Swarm melakukan rolling update service
+7. **Smoke Test** — Verifikasi endpoint `/actuator/health/readiness`
+
+<Cards>
+<Card title="Deploy Manual" icon="manual">
+Gunakan workflow_dispatch di yomu-deployment dengan input `image_tag` untuk deploy manual. Berguna untuk rollback atau deploy hotfix.
+</Card>
+<Card title="Cross-Repo Trigger" icon="cross">
+Subproyek lain dapat memicu deploy infra melalui repository_dispatch. Berguna untuk orchestrasi multi-service.
+</Card>
+</Cards>
+
+## Build Docker
 
 ```dockerfile
 # Multi-stage build uses eclipse-temurin:21-jre
@@ -135,4 +161,12 @@ OWASP detects Log4j CVE-2021-44228 (CVSS 10.0). Build blocks. SARIF uploaded to 
 # Stage 2: runner (eclipse-temurin:21-jre)
 ```
 
-The final image contains only the runtime JRE (not JDK), reducing attack surface and image size.
+Image final hanya berisi JRE runtime (bukan JDK), mengurangi attack surface dan ukuran image.
+
+## Tag Image
+
+| Environment | Tag Pattern | Trigger |
+|-------------|-------------|---------|
+| Production | `main` | Push ke branch main |
+| Staging | `staging` | Push ke branch staging |
+| Specific | `<commit-sha>` | Workflow dispatch manual |
