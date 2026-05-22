@@ -1,9 +1,9 @@
 ---
 title: Ikhtisar Deployment
-description: Deploy platform Yomu ke Google Cloud VPS menggunakan Docker Compose, blue-green deployment, dan obervabilitas penuh
+description: Deploy platform Yomu ke Google Cloud VPS menggunakan Docker Swarm, rolling deployment, dan observabilitas penuh
 ---
 
-Platform Yomu dideploy pada satu **Google Cloud Compute Engine (VPS)** dengan arsitektur **Docker Compose** yang memisahkan layanan berdasarkan lingkungannya.
+Platform Yomu dideploy pada satu **Google Cloud Compute Engine (VPS)** dengan arsitektur **Docker Swarm** yang menjalankan semua layanan dalam satu stack terkoordinasi.
 
 ## Target Deployment
 
@@ -12,8 +12,8 @@ Platform Yomu dideploy pada satu **Google Cloud Compute Engine (VPS)** dengan ar
 | **Cloud Provider** | Google Cloud Platform (GCP) |
 | **Compute** | Compute Engine VM (VPS) — Ubuntu LTS |
 | **Domain** | `yomu.my.id` |
-| **Orchestration** | Docker Compose v2 |
-| **Reverse Proxy** | Traefik v3.1 |
+| **Orchestration** | Docker Swarm |
+| **Reverse Proxy** | Traefik v3.1 (Swarm provider) |
 | **Container Registry** | GitHub Container Registry (GHCR) |
 
 ## Arsitektur Deployment
@@ -24,7 +24,7 @@ flowchart TB
     DNS["Cloudflare DNS<br/>yomu.my.id"]
 
     subgraph GCP["Google Cloud Compute Engine"]
-        subgraph Docker["Docker Host"]
+        subgraph Swarm["Docker Swarm Stack"]
             subgraph Shared["Shared Infrastructure"]
                 Traefik["Traefik<br/>Reverse Proxy"]
                 PG[("PostgreSQL")]
@@ -36,30 +36,43 @@ flowchart TB
                 OTel["OTEL Collector"]
             end
 
-            subgraph Prod["Production — Blue/Green"]
-                Blue["🔵 Blue"]
-                Green["🟢 Green"]
+            subgraph Prod["Production"]
+                FE["frontend"]
+                Java["java"]
+                Rust["rust"]
             end
 
             subgraph Staging["Staging"]
-                ST["frontend-staging<br/>java-staging<br/>rust-staging"]
+                FE_ST["frontend-staging"]
+                Java_ST["java-staging"]
+                Rust_ST["rust-staging"]
+                PG_ST[("postgres-staging")]
+                Redis_ST[("redis-staging")]
             end
         end
     end
 
     User --> DNS
     DNS --> Traefik
-    Traefik -->|Production| Blue
-    Traefik -->|Production| Green
-    Traefik -->|staging.yomu.my.id| ST
+    Traefik -->|yomu.my.id| FE
+    Traefik -->|java.yomu.my.id| Java
+    Traefik -->|rust.yomu.my.id| Rust
+    Traefik -->|staging.yomu.my.id| FE_ST
+    Traefik -->|monitoring.yomu.my.id| Graf
 
-    Blue --> PG & Redis
-    Green --> PG & Redis
-    ST --> PG & Redis
+    FE --> Java & Rust
+    Java --> PG & Redis
+    Rust --> PG & Redis
+    FE_ST --> Java_ST & Rust_ST
+    Java_ST --> PG_ST & Redis_ST
+    Rust_ST --> PG_ST & Redis_ST
 
-    Blue -.-> OTel
-    Green -.-> OTel
-    ST -.-> OTel
+    FE -.-> OTel
+    Java -.-> OTel
+    Rust -.-> OTel
+    FE_ST -.-> OTel
+    Java_ST -.-> OTel
+    Rust_ST -.-> OTel
     OTel --> Prom & Loki & Tempo
 ```
 
@@ -67,22 +80,22 @@ flowchart TB
 
 | Lingkungan | Domain | Strategi | Database |
 |------------|--------|----------|----------|
-| **Production** | `yomu.my.id` | Blue-Green (satu aktif) | `yomu_db`, `yomu_engine` |
-| **Staging** | `staging.yomu.my.id` | Always-on | `yomu_db_staging`, `yomu_engine_staging` |
+| **Production** | `yomu.my.id`, `java.yomu.my.id`, `rust.yomu.my.id` | Rolling Deployment | `yomu_db`, `yomu_engine` |
+| **Staging** | `staging.yomu.my.id`, `java-staging.yomu.my.id`, `rust-staging.yomu.my.id` | Always-on | `yomu_db_staging`, `yomu_engine_staging` |
 
 ## Navigasi Sub-bagian
 
 <Cards>
-  <Card title="Blue-Green Deployment" icon="🔵🟢" href="/docs/deployment/blue-green">
-    Mekanisme routing, skrip deploy, switch traffic, dan rollback
+  <Card title="Rolling Deployment" icon="🔄" href="/docs/deployment/rolling">
+    Strategi zero-downtime dengan Docker Swarm rolling update dan auto-rollback
   </Card>
   <Card title="Observabilitas" icon="📊" href="/docs/deployment/observability">
     Metrics (Prometheus), logs (Loki), traces (Tempo), dashboards (Grafana)
   </Card>
   <Card title="Jaringan" icon="🌐" href="/docs/deployment/network">
-    Isolasi jaringan Docker, DNS, dan arsitektur routing
+    Overlay network Docker Swarm, DNS, dan arsitektur routing
   </Card>
   <Card title="Domain & TLS" icon="🔒" href="/docs/deployment/domain">
-    DNS records, sertifikat TLS, dan konfigurasi Traefik
+    DNS records, sertifikat TLS, dan routing subdomain via Traefik
   </Card>
 </Cards>

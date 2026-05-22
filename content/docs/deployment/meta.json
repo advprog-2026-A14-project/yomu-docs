@@ -2,7 +2,7 @@
   "title": "Deployment",
   "pages": [
     "index",
-    "blue-green",
+    "rolling",
     "observability",
     "network",
     "domain"

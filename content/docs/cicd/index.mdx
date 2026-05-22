@@ -1,10 +1,9 @@
 ---
-title: CI/CD Pipeline
+title: Pipeline CI/CD
 description: Gambaran pipeline Continuous Integration dan Continuous Deployment di ketiga subproyek
 ---
 
-
-Dokumen ini menjelaskan pipeline CI/CD di ketiga subproyek Yomu. Setiap subproyek mempertahankan workflow GitHub Actions sendiri, tanpa workflow di level root.
+Dokumen ini menjelaskan pipeline CI/CD di ketiga subproyek Yomu. Setiap subproyek mempertahankan workflow GitHub Actions sendiri, tanpa workflow di level root. Semua deployment kini menuju Docker Swarm di VPS GCP melalui yomu-deployment.
 
 ```mermaid
 flowchart TD
@@ -13,7 +12,7 @@ flowchart TD
         Q --> C[JaCoCo Coverage]
         C --> S[OWASP Security Audit]
         S --> R[Docker Build → GHCR]
-        R --> D[Heroku Deployment]
+        R --> RD[repository_dispatch]
     end
 
     subgraph "Rust Backend"
@@ -21,10 +20,11 @@ flowchart TD
         R1 --> L[clippy]
         R1 --> D1[cargo doc]
         R1 --> T[cargo nextest]
-        R1 --> DB[Docker Build]
         T --> Tc[Tarpaulin Coverage → SonarCloud]
+        R1 --> DB[Docker Build]
         DB --> R2[release.yml]
         R2 --> M[Multi-arch Docker → GHCR]
+        M --> RD1[repository_dispatch]
     end
 
     subgraph "Frontend"
@@ -33,14 +33,23 @@ flowchart TD
         L1 --> B[Next.js Build]
         B --> F2[release.yml]
         F2 --> FB[Docker Build → Test Health → GHCR]
+        FB --> RD2[repository_dispatch]
+    end
+
+    subgraph "yomu-deployment"
+        RD --> DEP[deploy-production.yml]
+        RD1 --> DEP
+        RD2 --> DEP
+        DEP --> SSH[SSH ke VPS GCP]
+        SSH --> SWARM[docker stack deploy]
+        SWARM --> VPS[VPS 34.101.41.6]
     end
 
     style J fill:#f9f,stroke:#333,stroke-width:2px
     style R1 fill:#f9f,stroke:#333,stroke-width:2px
     style F1 fill:#f9f,stroke:#333,stroke-width:2px
-    style D fill:#9f9,stroke:#333,stroke-width:2px
-    style R2 fill:#9f9,stroke:#333,stroke-width:2px
-    style F2 fill:#9f9,stroke:#333,stroke-width:2px
+    style VPS fill:#9f9,stroke:#333,stroke-width:2px
+    style DEP fill:#9cf,stroke:#333,stroke-width:2px
 ```
 
 <Cards>
@@ -54,17 +63,17 @@ OWASP DepCheck CVSS ≥9.0 memblokir build. Pemindaian mingguan cargo-audit + ca
 Multi-stage build di semua subproyek. Java menggunakan eclipse-temurin:21-jre, Rust alpine:3.20, Frontend node:24-slim.
 </Card>
 <Card title="Deployment" icon="rocket">
-Java → Heroku (staging + production). Rust + Frontend → GHCR (multi-arch: amd64, arm64).
+Semua layanan → GHCR → yomu-deployment → SSH → Docker Swarm di VPS GCP (34.101.41.6). Tag: main (production), staging (staging).
 </Card>
 </Cards>
 
 ## Matriks Layanan
 
-| Subproyek | CI Workflow | Release Workflow | Security Workflow | CD Workflow |
-|------------|-------------|------------------|-------------------|-------------|
-| Java | `ci.yml` | `release.yml` | `security-audit.yml` | `cd.yml` |
-| Rust | `ci.yml` | `release.yml` | `security-audit.yml` | — |
-| Frontend | `ci.yml` | `release.yml` | — | — |
+| Subproyek | CI Workflow | Release Workflow | Security Workflow | CD Target |
+|------------|-------------|------------------|-------------------|-----------|
+| Java | `ci.yml` | `release.yml` | `security-audit.yml` | GHCR → VPS Swarm |
+| Rust | `ci.yml` | `release.yml` | `security-audit.yml` | GHCR → VPS Swarm |
+| Frontend | `ci.yml` | `release.yml` | — | GHCR → VPS Swarm |
 
 ## Prinsip Utama
 
@@ -85,7 +94,33 @@ Java: OWASP DepCheck (CVSS ≥9.0 memblokir). Rust: cargo-audit + cargo-deny (wh
 Semua subproyek menggunakan multi-stage Dockerfile. Java: 2 stage (builder + runner). Rust: 3 stage. Frontend: 3 stage dengan health check.
 </Card>
 <Card title="Deployment" icon="cloud">
-Java → Heroku (dipicu oleh workflow_run). Rust + Frontend → GHCR saja (manual atau orchestrator eksternal).
+Semua layanan → GHCR → repository_dispatch → yomu-deployment/deploy-production.yml → SSH → docker stack deploy di VPS Swarm.
+</Card>
+</Cards>
+
+## Alur Deployment
+
+Setiap subproyek mengikuti alur yang sama:
+
+1. **CI Validation** — Push atau PR memicu `ci.yml` untuk validasi kualitas kode
+2. **Docker Build** — Setelah CI lulus, `release.yml` membuild dan push Docker image ke GHCR
+3. **Repository Dispatch** — Release workflow mengirim event `repository_dispatch` ke yomu-deployment
+4. **Deploy Trigger** — Workflow `deploy-production.yml` di yomu-deployment menerima trigger
+5. **SSH ke VPS** — Workflow SSH ke VPS GCP (34.101.41.6, user: pongo)
+6. **Swarm Deploy** — Menjalankan `docker stack deploy -c docker-compose.swarm.yml yomu`
+7. **Smoke Test** — Verifikasi health endpoint semua layanan
+
+<Cards>
+<Card title="Image Tags" icon="tag">
+- `main`: Production deployment
+- `staging`: Staging deployment
+- `<commit-sha>`: Deployment spesifik (via workflow_dispatch)
+</Card>
+<Card title="VPS Access" icon="key">
+SSH menggunakan `appleboy/ssh-action` dengan GCP_SSH_KEY secret. Host: 34.101.41.6, user: pongo.
+</Card>
+<Card title="Rollback" icon="undo">
+Gunakan workflow_dispatch di yomu-deployment dengan image_tag spesifik untuk rollback ke versi sebelumnya.
 </Card>
 </Cards>
 
@@ -93,15 +128,16 @@ Java → Heroku (dipicu oleh workflow_run). Rust + Frontend → GHCR saja (manua
 
 | Subproyek | File Workflow |
 |------------|----------------|
-| Java | `.github/workflows/ci.yml`, `pmd.yml`, `security-audit.yml`, `release.yml`, `cd.yml` |
+| Java | `.github/workflows/ci.yml`, `pmd.yml`, `security-audit.yml`, `release.yml` |
 | Rust | `.github/workflows/ci.yml`, `sonar.yml`, `security-audit.yml`, `release.yml` |
 | Frontend | `.github/workflows/ci.yml`, `release.yml` |
+| Deployment | `yomu-deployment/.github/workflows/deploy-production.yml` |
 
 ## Tautan
 
 <Cards>
 <Card title="Java Pipeline" href="/docs/cicd/java-pipeline">
-Gradle PMD, JaCoCo, OWASP, deployment Heroku
+Gradle PMD, JaCoCo, OWASP, deployment VPS Swarm
 </Card>
 <Card title="Rust Pipeline" href="/docs/cicd/rust-pipeline">
 cargo fmt, clippy, nextest, tarpaulin, SonarCloud

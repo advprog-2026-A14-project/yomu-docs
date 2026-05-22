@@ -13,6 +13,8 @@ flowchart LR
         Java["Java Spring Boot"]
         Rust["Rust Axum"]
         Frontend["Next.js"]
+        CAdvisor["cAdvisor"]
+        NodeExp["node-exporter"]
         PgExp["postgres-exporter"]
         RdExp["redis-exporter"]
     end
@@ -29,6 +31,8 @@ flowchart LR
     Java -->|OTLP| OTel
     Rust -->|OTLP| OTel
     Frontend -->|OTLP| OTel
+    CAdvisor -->|scrape| Prom
+    NodeExp -->|scrape| Prom
     PgExp -->|scrape| Prom
     RdExp -->|scrape| Prom
 
@@ -50,15 +54,14 @@ Prometheus melakukan scrape pada seluruh layanan setiap 15 detik.
 |-----|--------|------|--------|
 | `prometheus` | `prometheus:9090` | `/metrics` | env: infrastructure |
 | `traefik` | `traefik:8080` | `/metrics` | env: infrastructure |
-| `java-blue` | `java-blue:8080` | `/actuator/prometheus` | env: blue, service: java, slot: blue |
-| `java-green` | `java-green:8080` | `/actuator/prometheus` | env: green, service: java, slot: green |
-| `java-staging` | `java-staging:8080` | `/actuator/prometheus` | env: staging, service: java, slot: staging |
-| `rust-blue` | `rust-blue:8080` | `/metrics` | env: blue, service: rust, slot: blue |
-| `rust-green` | `rust-green:8080` | `/metrics` | env: green, service: rust, slot: green |
-| `rust-staging` | `rust-staging:8080` | `/metrics` | env: staging, service: rust, slot: staging |
-| `frontend-blue` | `frontend-blue:3000` | `/api/metrics` | env: blue, service: frontend, slot: blue |
-| `frontend-green` | `frontend-green:3000` | `/api/metrics` | env: green, service: frontend, slot: green |
-| `frontend-staging` | `frontend-staging:3000` | `/api/metrics` | env: staging, service: frontend, slot: staging |
+| `java` | `java:8080` | `/actuator/prometheus` | env: production, service: java |
+| `java-staging` | `java-staging:8080` | `/actuator/prometheus` | env: staging, service: java |
+| `rust` | `rust:8080` | `/metrics` | env: production, service: rust |
+| `rust-staging` | `rust-staging:8080` | `/metrics` | env: staging, service: rust |
+| `frontend` | `frontend:3000` | `/api/metrics` | env: production, service: frontend |
+| `frontend-staging` | `frontend-staging:3000` | `/api/metrics` | env: staging, service: frontend |
+| `cadvisor` | `cadvisor:8080` | `/metrics` | env: infrastructure, service: cadvisor |
+| `node-exporter` | `node-exporter:9100` | `/metrics` | env: infrastructure, service: node |
 | `postgres` | `postgres-exporter:9187` | `/metrics` | env: infrastructure, service: postgres |
 | `redis` | `redis-exporter:9121` | `/metrics` | env: infrastructure, service: redis |
 
@@ -72,17 +75,44 @@ groups:
       - alert: ServiceDown
         expr: up == 0
         for: 1m
+        annotations:
+          summary: "Service {{ $labels.job }} down"
+          description: "{{ $labels.job }} tidak merespon selama 1 menit"
+      
       - alert: HighErrorRate
         expr: rate(traefik_service_requests_total{code=~"5.."}[5m]) > 0.1
         for: 5m
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate > 10% pada {{ $labels.service }}"
+      
       - alert: JavaHeapHigh
         expr: jvm_memory_used_bytes / jvm_memory_max_bytes > 0.85
         for: 5m
-      - alert: BlueGreenOutOfSync
-        expr: (count(up{job=~"java-blue|rust-blue|frontend-blue"} == 1) == 0)
-              and
-              (count(up{job=~"java-green|rust-green|frontend-green"} == 1) == 0)
-        for: 2m
+        annotations:
+          summary: "JVM heap usage high"
+          description: "Heap usage > 85% pada {{ $labels.job }}"
+      
+      - alert: ContainerHighCPU
+        expr: rate(container_cpu_usage_seconds_total[5m]) > 0.8
+        for: 5m
+        annotations:
+          summary: "Container CPU usage high"
+          description: "CPU usage > 80% pada {{ $labels.name }}"
+      
+      - alert: ContainerHighMemory
+        expr: container_memory_usage_bytes / container_spec_memory_limit_bytes > 0.9
+        for: 5m
+        annotations:
+          summary: "Container memory usage high"
+          description: "Memory usage > 90% pada {{ $labels.name }}"
+      
+      - alert: HighLatency
+        expr: histogram_quantile(0.95, rate(traefik_service_request_duration_seconds_bucket[5m])) > 2
+        for: 5m
+        annotations:
+          summary: "High latency detected"
+          description: "P95 latency > 2s pada {{ $labels.service }}"
 ```
 
 ### Dashboard Metrics
@@ -92,14 +122,18 @@ flowchart LR
     Prom["Prometheus TSDB"]
 
     subgraph GrafanaDash["Grafana Dashboards"]
-        D1["Blue-Green Overview\n(active env, RPS, error rate, latency, JVM)"]
+        D1["Production Overview\n(RPS, error rate, latency, JVM)"]
         D2["Service Health\n(up status, p50/p95/p99 latency, error rate)"]
         D3["Environment Comparison\n(prod vs staging: heap, RPS, errors)"]
+        D4["Container Metrics\n(CPU, memory, network per container)"]
+        D5["Host Metrics\n(node CPU, memory, disk, network)"]
     end
 
     Prom --> D1
     Prom --> D2
     Prom --> D3
+    Prom --> D4
+    Prom --> D5
 ```
 
 ## Logs (Loki)
@@ -115,8 +149,9 @@ flowchart LR
 Contoh kueri LogQL di Grafana:
 
 ```
-{service="java-blue"} |= "ERROR"
+{service="java"} |= "ERROR"
 {service="rust-staging"} |= "panic" | json
+{service="frontend"} |= "API call failed"
 ```
 
 ## Traces (Tempo)
@@ -185,10 +220,23 @@ flowchart LR
 
 ## Grafana Dashboards
 
+Grafana tersedia di **`monitoring.yomu.my.id`** dengan dashboard berikut:
+
 | Dashboard | Panel Utama |
 |-----------|-------------|
-| **Blue-Green Overview** | Active environment stat, request rate, error rate, p95 latency, JVM memory, Traefik throughput |
+| **Production Overview** | Request rate, error rate, p95 latency, JVM memory, Traefik throughput |
 | **Service Health** | Up/down status per service, latency p50/p95/p99, error rate by status code, Traefik traffic metrics |
 | **Environment Comparison** | Prod vs Staging JVM heap, request rates, error rates, service up counts |
+| **Container Metrics** | CPU, memory, network usage per container (dari cAdvisor) |
+| **Host Metrics** | Node CPU, memory, disk I/O, network (dari node-exporter) |
 
 Semua dashboard diprovision secara otomatis pada saat Grafana pertama kali start.
+
+## Akses Dashboard
+
+| Service | URL | Credentials |
+|---------|-----|-------------|
+| Grafana | `https://monitoring.yomu.my.id` | `admin` / password dari `.env` |
+| Prometheus | `https://monitoring.yomu.my.id/prometheus` | Basic auth (opsional) |
+| Tempo | Internal only (via Grafana) | — |
+| Loki | Internal only (via Grafana) | — |

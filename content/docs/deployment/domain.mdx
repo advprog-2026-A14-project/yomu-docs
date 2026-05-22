@@ -1,18 +1,21 @@
 ---
 title: Domain & TLS
-description: DNS records, konfigurasi Traefik, dan opsi TLS/HTTPS
+description: DNS records, routing subdomain via Traefik Swarm labels, dan konfigurasi TLS/HTTPS
 ---
 
-Platform Yomu dideploy di domain publik `yomu.my.id` dengan subdomain untuk staging dan monitoring.
+Platform Yomu dideploy di domain publik `yomu.my.id` dengan routing berbasis subdomain untuk production, staging, dan monitoring.
 
 ## DNS Records
 
 | Record | Type | Target | Keterangan |
 |--------|------|--------|------------|
-| `yomu.my.id` | A | VPS Public IP (GCP) | Produksi utama |
-| `staging.yomu.my.id` | CNAME atau A | VPS Public IP | Staging environment |
-| `grafana.yomu.my.id` | CNAME atau A | VPS Public IP | Dashboard Grafana |
-| `prom.yomu.my.id` | CNAME atau A | VPS Public IP | Prometheus (dengan restriksi akses) |
+| `yomu.my.id` | A | VPS Public IP (GCP) | Frontend production |
+| `java.yomu.my.id` | A | VPS Public IP (GCP) | Java backend production |
+| `rust.yomu.my.id` | A | VPS Public IP (GCP) | Rust backend production |
+| `staging.yomu.my.id` | A | VPS Public IP (GCP) | Frontend staging |
+| `java-staging.yomu.my.id` | A | VPS Public IP (GCP) | Java backend staging |
+| `rust-staging.yomu.my.id` | A | VPS Public IP (GCP) | Rust backend staging |
+| `monitoring.yomu.my.id` | A | VPS Public IP (GCP) | Grafana dashboard |
 
 ## Routing Matrix
 
@@ -22,13 +25,14 @@ flowchart LR
     DNS["Cloudflare DNS"]
     GCP["GCP VPS Public IP"]
 
-    subgraph TraefikRouting["Routing Traefik"]
-        R1["Host(yomu.my.id)\n→ active slot"]
-        R2["Host(staging.yomu.my.id)\n→ staging"]
-        R3["Host(grafana.yomu.my.id)\n→ Grafana"]
-        R4["Host(prom.yomu.my.id)\n→ Prometheus"]
-        R5["Path(/grafana)\n→ Grafana"]
-        R6["Path(/prometheus)\n→ Prometheus"]
+    subgraph TraefikRouting["Traefik Swarm Routing"]
+        R1["Host(yomu.my.id)<br/>→ frontend"]
+        R2["Host(java.yomu.my.id)<br/>→ java"]
+        R3["Host(rust.yomu.my.id)<br/>→ rust"]
+        R4["Host(staging.yomu.my.id)<br/>→ frontend-staging"]
+        R5["Host(java-staging.yomu.my.id)<br/>→ java-staging"]
+        R6["Host(rust-staging.yomu.my.id)<br/>→ rust-staging"]
+        R7["Host(monitoring.yomu.my.id)<br/>→ grafana"]
     end
 
     User --> DNS
@@ -36,29 +40,67 @@ flowchart LR
     GCP --> TraefikRouting
 ```
 
-## Struktur Path Produksi
+## Routing Subdomain Production
 
-| Path | Router | Target | Middleware |
-|------|--------|--------|------------|
-| `yomu.my.id/` | `frontend-router` | `frontend-(blue/green)` | — |
-| `yomu.my.id/api/java/*` | `java-router` | `java-(blue/green)` | `strip-java-prefix` |
-| `yomu.my.id/api/rust/*` | `rust-router` | `rust-(blue/green)` | `strip-rust-prefix` |
-| `yomu.my.id/grafana/*` | `grafana-router` | grafana@docker | `strip-grafana-prefix` |
-| `yomu.my.id/prometheus/*` | `prometheus-router` | prometheus@docker | `strip-prometheus-prefix` |
+| Subdomain | Router | Target Service | Traefik Label |
+|-----------|--------|----------------|---------------|
+| `yomu.my.id` | `frontend-router` | `frontend` | `Host(\`yomu.my.id\`)` |
+| `java.yomu.my.id` | `java-router` | `java` | `Host(\`java.yomu.my.id\`)` |
+| `rust.yomu.my.id` | `rust-router` | `rust` | `Host(\`rust.yomu.my.id\`)` |
 
-## Struktur Path Staging
+## Routing Subdomain Staging
 
-| Path | Router | Target | Middleware |
-|------|--------|--------|------------|
-| `staging.yomu.my.id/` | `staging-frontend-router` | `frontend-staging` | — |
-| `staging.yomu.my.id/api/java/*` | `staging-java-router` | `java-staging` | `staging-strip-java-prefix` |
-| `staging.yomu.my.id/api/rust/*` | `staging-rust-router` | `rust-staging` | `staging-strip-rust-prefix` |
+| Subdomain | Router | Target Service | Traefik Label |
+|-----------|--------|----------------|---------------|
+| `staging.yomu.my.id` | `staging-frontend-router` | `frontend-staging` | `Host(\`staging.yomu.my.id\`)` |
+| `java-staging.yomu.my.id` | `staging-java-router` | `java-staging` | `Host(\`java-staging.yomu.my.id\`)` |
+| `rust-staging.yomu.my.id` | `staging-rust-router` | `rust-staging` | `Host(\`rust-staging.yomu.my.id\`)` |
+
+## Routing Monitoring
+
+| Subdomain | Router | Target Service | Traefik Label |
+|-----------|--------|----------------|---------------|
+| `monitoring.yomu.my.id` | `grafana-router` | `grafana` | `Host(\`monitoring.yomu.my.id\`)` |
+
+## Konfigurasi Traefik Labels
+
+Routing dikonfigurasi via labels di `docker-compose.swarm.yml`:
+
+```yaml
+services:
+  frontend:
+    deploy:
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.frontend.rule=Host(`yomu.my.id`)"
+        - "traefik.http.routers.frontend.entrypoints=websecure"
+        - "traefik.http.routers.frontend.tls=true"
+        - "traefik.http.routers.frontend.tls.certresolver=letsencrypt"
+  
+  java:
+    deploy:
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.java.rule=Host(`java.yomu.my.id`)"
+        - "traefik.http.routers.java.entrypoints=websecure"
+        - "traefik.http.routers.java.tls=true"
+        - "traefik.http.routers.java.tls.certresolver=letsencrypt"
+  
+  rust:
+    deploy:
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.rust.rule=Host(`rust.yomu.my.id`)"
+        - "traefik.http.routers.rust.entrypoints=websecure"
+        - "traefik.http.routers.rust.tls=true"
+        - "traefik.http.routers.rust.tls.certresolver=letsencrypt"
+```
 
 ## Opsi TLS/HTTPS
 
 ### 1. Let's Encrypt via Traefik (Recommended)
 
-Aktifkan TLS otomatis dengan uncomment block di `traefik/traefik.yml`:
+Aktifkan TLS otomatis dengan konfigurasi di `traefik.yml`:
 
 ```yaml
 certificatesResolvers:
@@ -73,16 +115,6 @@ Traefik akan secara otomatis:
 - Request sertifikat dari Let's Encrypt
 - Menyimpan ke `/etc/traefik/acme.json`
 - Renew otomatis saat mendekati kedaluwarsa
-
-Tambahkan label ke router:
-
-```yaml
-routers:
-  frontend-router:
-    rule: "Host(`yomu.my.id`)"
-    tls:
-      certResolver: letsencrypt
-```
 
 ### 2. Cloudflare Origin Certificates
 
@@ -112,7 +144,7 @@ Mount ke Traefik dan konfigurasi sebagai `tls` di router staging.
 |-------|-------------|
 | Grafana sign-up | Disabled (`GF_USERS_ALLOW_SIGN_UP: false`) |
 | Grafana default user | `admin` + password dari `.env` |
-| Prometheus | Via Traefik PathPrefix (bisa tambahkan auth middleware) |
+| Prometheus | Via Traefik subdomain (bisa tambahkan auth middleware) |
 | Traefik dashboard | `:3001` — bind ke localhost atau tambahkan IP restriksi |
 | DB password | Via `.env`, tidak ter-commit ke repo |
 | Internal API key | `INTERNAL_API_KEY` + `JAVA_CORE_API_KEY` di `.env` |

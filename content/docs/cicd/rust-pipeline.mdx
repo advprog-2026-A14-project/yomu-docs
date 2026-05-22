@@ -1,10 +1,9 @@
 ---
-title: Rust Pipeline
+title: Pipeline Rust
 description: CI/CD Rust backend — cargo fmt, clippy, doc, nextest, tarpaulin, dan multi-arch Docker
 ---
 
-
-Rust backend menggunakan Edition 2024 dengan MSRV 1.85 dan Axum 0.8.8. Pipeline menjalankan empat workflow files dengan parallel quality jobs, SonarCloud coverage, dan multi-arch Docker builds.
+Rust backend menggunakan Edition 2024 dengan MSRV 1.85 dan Axum 0.8.8. Pipeline menjalankan empat file workflow dengan parallel quality jobs, SonarCloud coverage, dan multi-arch Docker builds. Deployment melalui GHCR → yomu-deployment → VPS Docker Swarm.
 
 ```mermaid
 flowchart TD
@@ -40,13 +39,21 @@ flowchart TD
         C3 --> C4[version tags]
     end
 
+    subgraph CD
+        C4 --> D[repository_dispatch]
+        D --> D1[yomu-deployment/deploy-production.yml]
+        D1 --> D2[SSH ke VPS GCP]
+        D2 --> D3[docker stack deploy]
+        D3 --> D4[VPS 34.101.41.6]
+    end
+
     style A fill:#f9f,stroke:#333,stroke-width:2px
     style FAIL1 fill:#ff9,stroke:#333,stroke-width:2px
     style FAIL2 fill:#ff9,stroke:#333,stroke-width:2px
-    style C4 fill:#9f9,stroke:#333,stroke-width:2px
+    style D4 fill:#9f9,stroke:#333,stroke-width:2px
 ```
 
-## Workflow Files
+## File Workflow
 
 <Cards>
 <Card title="ci.yml" icon="play">
@@ -59,11 +66,11 @@ tarpaulin coverage → SonarCloud. PostgreSQL + Redis services. Trigger setelah 
 cargo-audit + cargo-deny (deny.toml whitelist). Trigger pada perubahan Cargo.toml dan scan mingguan.
 </Card>
 <Card title="release.yml" icon="package">
-Multi-arch Docker build (amd64, arm64). Push ke GHCR dengan version tags. Label SBOM disertakan.
+Multi-arch Docker build (amd64, arm64). Push ke GHCR dengan version tags. Label SBOM disertakan. Mengirim repository_dispatch ke yomu-deployment.
 </Card>
 </Cards>
 
-## Rust Quality Tools
+## Alat Kualitas Rust
 
 <Cards>
 <Card title="fmt" icon="code">
@@ -83,9 +90,9 @@ tarpaulin coverage untuk SonarCloud. Melacak branch dan line coverage. Minimum 8
 </Card>
 </Cards>
 
-## Rust Quality Gates
+## Quality Gate Rust
 
-| Tool | Threshold | Purpose |
+| Alat | Threshold | Tujuan |
 |------|-----------|---------|
 | cargo fmt | harus lulus | Formatting kode |
 | clippy | tanpa warnings | Kualitas kode |
@@ -95,22 +102,22 @@ tarpaulin coverage untuk SonarCloud. Melacak branch dan line coverage. Minimum 8
 | cargo-audit | tanpa high vulns | Security scanning |
 | cargo-deny | cocok whitelist | License compliance |
 
-## Rust Build Tools
+## Alat Build Rust
 
-| Tool | Version | Purpose |
+| Alat | Versi | Tujuan |
 |------|---------|---------|
 | Rust | 1.85 MSRV | Runtime dan compile target |
 | Rust Edition | 2024 | Language features |
 | Axum | 0.8.8 | Web framework |
-| tokio | Latest | Async runtime |
-| nextest | Latest | Parallel test runner |
-| tarpaulin | Latest | Coverage tool |
-| cargo-audit | Latest | Dependency vuln scanning |
-| cargo-deny | Latest | License/deny checks |
+| tokio | Terbaru | Async runtime |
+| nextest | Terbaru | Parallel test runner |
+| tarpaulin | Terbaru | Coverage tool |
+| cargo-audit | Terbaru | Dependency vuln scanning |
+| cargo-deny | Terbaru | License/deny checks |
 | Docker | Multi-stage | Image optimization |
-| Buildx | Latest | Multi-arch builds |
+| Buildx | Terbaru | Multi-arch builds |
 
-## Rust CI Pipeline Jobs
+## Jobs Pipeline CI Rust
 
 <Cards>
 <Card title="fmt job" icon="checklist">
@@ -173,3 +180,49 @@ Label SBOM (Software Bill of Materials) disertakan. Version tags di-push ke GHCR
 Multi-stage build mengurangi ukuran image final. Base image Rust 1.85 Alpine.
 </Card>
 </Cards>
+
+## Deployment
+
+<Cards>
+<Card title="Image Registry" icon="registry">
+Image: `ghcr.io/advprog-2026-a14-project/yomu-backend-rust:main` (production) atau `:staging` (staging)
+</Card>
+<Card title="Trigger Deploy" icon="trigger">
+Setelan CI mengirim `repository_dispatch` ke repo yomu-deployment untuk memicu deploy ke VPS. Event type: `deploy-trigger` dengan payload `image_tag`.
+</Card>
+<Card title="Staging Update" icon="staging">
+Untuk staging, gunakan `docker service update --image` untuk update individual service tanpa full stack deploy.
+</Card>
+</Cards>
+
+## Alur CD
+
+1. **Release Workflow** — Setelah CI lulus, `release.yml` membuild Docker image multi-arch dan push ke GHCR
+2. **Repository Dispatch** — Workflow mengirim event ke yomu-deployment dengan payload:
+   ```json
+   {
+     "image_tag": "main"
+   }
+   ```
+3. **Deploy Trigger** — `deploy-production.yml` di yomu-deployment menerima event `repository_dispatch`
+4. **SSH Connection** — Workflow menggunakan `appleboy/ssh-action` untuk SSH ke VPS GCP
+5. **Stack Deploy** — Menjalankan `docker stack deploy -c docker-compose.swarm.yml yomu`
+6. **Rolling Update** — Docker Swarm melakukan rolling update service rust
+7. **Smoke Test** — Verifikasi endpoint `/health` service Rust
+
+<Cards>
+<Card title="Deploy Manual" icon="manual">
+Gunakan workflow_dispatch di yomu-deployment dengan input `image_tag` untuk deploy manual. Berguna untuk rollback atau deploy hotfix.
+</Card>
+<Card title="Service Update" icon="service">
+Untuk update staging cepat: `docker service update --image ghcr.io/...:staging yomu_rust`. Tidak perlu full stack deploy.
+</Card>
+</Cards>
+
+## Tag Image
+
+| Environment | Tag Pattern | Trigger |
+|-------------|-------------|---------|
+| Production | `main` | Push ke branch main |
+| Staging | `staging` | Push ke branch staging |
+| Specific | `<commit-sha>` | Workflow dispatch manual |

@@ -1,10 +1,9 @@
 ---
-title: Frontend Pipeline
+title: Pipeline Frontend
 description: CI/CD Frontend — ESLint, Next.js build, dan multi-arch Docker dengan health check
 ---
 
-
-Frontend Next.js menggunakan React 19.2.3 dengan Tailwind CSS dan komponen shadcn/ui. Pipeline menjalankan validasi ESLint, build Next.js, dan pembuatan Docker image multi-arch. Saat ini belum memiliki E2E testing framework.
+Frontend Next.js menggunakan React 19.2.3 dengan Tailwind CSS dan komponen shadcn/ui. Pipeline menjalankan validasi ESLint, build Next.js, dan pembuatan Docker image multi-arch. Deployment melalui GHCR → yomu-deployment → VPS Docker Swarm. Saat ini belum memiliki E2E testing framework.
 
 ```mermaid
 flowchart TD
@@ -26,23 +25,31 @@ flowchart TD
         C3 --> C4[GHCR push]
     end
 
+    subgraph CD
+        C4 --> D[repository_dispatch]
+        D --> D1[yomu-deployment/deploy-production.yml]
+        D1 --> D2[SSH ke VPS GCP]
+        D2 --> D3[docker stack deploy]
+        D3 --> D4[VPS 34.101.41.6]
+    end
+
     style A fill:#f9f,stroke:#333,stroke-width:2px
     style FAIL fill:#ff9,stroke:#333,stroke-width:2px
-    style C4 fill:#9f9,stroke:#333,stroke-width:2px
+    style D4 fill:#9f9,stroke:#333,stroke-width:2px
 ```
 
-## Workflow Files
+## File Workflow
 
 <Cards>
 <Card title="ci.yml" icon="play">
 Setup Node.js 20, npm ci, ESLint, Next.js build. Berjalan pada push/PR ke branch main.
 </Card>
 <Card title="release.yml" icon="package">
-Pipeline tiga tahap: Docker build → lint&build → health check. Push multi-arch ke GHCR.
+Pipeline tiga tahap: Docker build → lint&build → health check. Push multi-arch ke GHCR. Mengirim repository_dispatch ke yomu-deployment.
 </Card>
 </Cards>
 
-## Frontend Quality Gates
+## Quality Gate Frontend
 
 <Cards>
 <Card title="ESLint" icon="linters">
@@ -56,21 +63,21 @@ Container starts, memeriksa endpoint /health, memverifikasi response 200 OK. Mem
 </Card>
 </Cards>
 
-## Frontend Build Tools
+## Alat Build Frontend
 
-| Tool | Version | Purpose |
+| Alat | Versi | Tujuan |
 |------|---------|---------|
 | Node.js | 20 | Runtime untuk CI |
 | Node.js | 24-slim | Runtime untuk Docker |
 | Next.js | 16.1.6 | Framework |
 | React | 19.2.3 | UI library |
-| Tailwind CSS | Latest | Styling |
-| ESLint | Latest | Linting |
-| shadcn/ui | Latest | Component library |
+| Tailwind CSS | Terbaru | Styling |
+| ESLint | Terbaru | Linting |
+| shadcn/ui | Terbaru | Component library |
 | Docker | Multi-stage | Image optimization |
-| standalone output | Latest | Production build |
+| standalone output | Terbaru | Production build |
 
-## ci.yml Stages
+## Tahapan ci.yml
 
 <Cards>
 <Card title="Setup" icon="setup">
@@ -84,7 +91,7 @@ Menjalankan next build dengan mode standalone output. Menghasilkan direktori `/.
 </Card>
 </Cards>
 
-## release.yml Stages
+## Tahapan release.yml
 
 <Cards>
 <Card title="Build" icon="package">
@@ -98,7 +105,7 @@ Container starts, menunggu health check endpoint. Memverifikasi /health mengemba
 </Card>
 </Cards>
 
-## Docker Build
+## Build Docker
 
 ```dockerfile
 # Multi-stage Dockerfile
@@ -111,6 +118,44 @@ Container starts, menunggu health check endpoint. Memverifikasi /health mengemba
 - Non-root user (node) untuk keamanan
 - Mode standalone output untuk deployment yang bersih
 - Health check endpoint dikonfigurasi di Next.js config
+
+## Deployment
+
+<Cards>
+<Card title="Image Registry" icon="registry">
+Image: `ghcr.io/advprog-2026-a14-project/yomu-frontend:main` (production) atau `:staging` (staging)
+</Card>
+<Card title="Trigger Deploy" icon="trigger">
+Setelan CI mengirim `repository_dispatch` ke repo yomu-deployment untuk memicu deploy ke VPS. Event type: `deploy-trigger` dengan payload `image_tag`.
+</Card>
+<Card title="Target Deployment" icon="server">
+VPS GCP 34.101.41.6, user: pongo. Deploy via `docker stack deploy -c docker-compose.swarm.yml yomu`.
+</Card>
+</Cards>
+
+## Alur CD
+
+1. **Release Workflow** — Setelah CI lulus, `release.yml` membuild Docker image dan push ke GHCR
+2. **Repository Dispatch** — Workflow mengirim event ke yomu-deployment dengan payload:
+   ```json
+   {
+     "image_tag": "main"
+   }
+   ```
+3. **Deploy Trigger** — `deploy-production.yml` di yomu-deployment menerima event `repository_dispatch`
+4. **SSH Connection** — Workflow menggunakan `appleboy/ssh-action` untuk SSH ke VPS
+5. **Stack Deploy** — Menjalankan `docker stack deploy` dengan image tag yang sesuai
+6. **Rolling Update** — Docker Swarm melakukan rolling update service frontend
+7. **Smoke Test** — Verifikasi endpoint root `/` Frontend
+
+<Cards>
+<Card title="Deploy Manual" icon="manual">
+Gunakan workflow_dispatch di yomu-deployment dengan input `image_tag` untuk deploy manual. Berguna untuk rollback atau deploy hotfix.
+</Card>
+<Card title="Health Endpoint" icon="checkup">
+Health check endpoint `/health` terintegrasi di Dockerfile. Memverifikasi container siap menerima traffic.
+</Card>
+</Cards>
 
 ## Keterbatasan Saat Ini
 
@@ -126,7 +171,7 @@ CI hanya memvalidasi kualitas kode (ESLint) dan keberhasilan build. Tidak ada ru
 </Card>
 </Cards>
 
-## Future Improvements
+## Perbaikan di Masa Depan
 
 <Cards>
 <Card title="Playwright E2E Tests" icon="test">
@@ -150,3 +195,11 @@ Mengembalikan 200 OK saat container sehat. Memeriksa koneksi database, koneksi R
 Dikonfigurasi di `next.config.js` dengan mode standalone output. Health check terintegrasi ke dalam Dockerfile.
 </Card>
 </Cards>
+
+## Tag Image
+
+| Environment | Tag Pattern | Trigger |
+|-------------|-------------|---------|
+| Production | `main` | Push ke branch main |
+| Staging | `staging` | Push ke branch staging |
+| Specific | `<commit-sha>` | Workflow dispatch manual |

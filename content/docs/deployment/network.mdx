@@ -1,78 +1,93 @@
 ---
 title: Jaringan & Isolasi
-description: Arsitektur jaringan Docker, isolasi environment, dan routing internal
+description: Arsitektur overlay network Docker Swarm, service discovery, dan routing internal
 ---
 
-Platform Yomu menggunakan **empat jaringan Docker bridge** untuk mengisolasi lalu lintas antar environment produksi, staging, dan infrastruktur bersama.
+Platform Yomu menggunakan **satu overlay network** Docker Swarm untuk menghubungkan semua layanan dalam stack terkoordinasi.
 
 ## Arsitektur Jaringan
 
 ```mermaid
-flowchart LR
-    subgraph Shared["yomu-shared-network"]
+flowchart TB
+    subgraph SwarmNet["yomu-overlay-net<br/>(Overlay Network)"]
         direction TB
-        S1["Traefik"]
-        S2["PostgreSQL"]
-        S3["Redis"]
-        S4["Prometheus"]
-        S5["Grafana"]
-        S6["Loki"]
-        S7["Tempo"]
-        S8["OTEL Collector"]
-        S9["Exporters"]
+        
+        subgraph Infra["Infrastructure"]
+            Traefik["Traefik"]
+            PG[("PostgreSQL")]
+            Redis[("Redis")]
+            Prom["Prometheus"]
+            Graf["Grafana"]
+            Loki["Loki"]
+            Tempo["Tempo"]
+            OTel["OTEL Collector"]
+            CAdvisor["cAdvisor"]
+            NodeExp["node-exporter"]
+        end
+        
+        subgraph Prod["Production Services"]
+            FE["frontend"]
+            Java["java"]
+            Rust["rust"]
+        end
+        
+        subgraph Staging["Staging Services"]
+            FE_ST["frontend-staging"]
+            Java_ST["java-staging"]
+            Rust_ST["rust-staging"]
+            PG_ST[("postgres-staging")]
+            Redis_ST[("redis-staging")]
+        end
     end
-
-    subgraph BlueNet["yomu-blue-network"]
-        B1["frontend-blue"]
-        B2["java-blue"]
-        B3["rust-blue"]
-    end
-
-    subgraph GreenNet["yomu-green-network"]
-        G1["frontend-green"]
-        G2["java-green"]
-        G3["rust-green"]
-    end
-
-    subgraph StageNet["yomu-staging-network"]
-        ST1["frontend-staging"]
-        ST2["java-staging"]
-        ST3["rust-staging"]
-    end
-
-    Traefik --> Shared
-    Traefik --> BlueNet
-    Traefik --> GreenNet
-    Traefik --> StageNet
-
-    B1 <--> B2 <--> B3
-    G1 <--> G2 <--> G3
-    ST1 <--> ST2 <--> ST3
-
-    B1 <--> S1
-    G1 <--> S1
-    ST1 <--> S1
-
-    B2 <--> S2 & S3
-    G2 <--> S2 & S3
-    ST2 <--> S2 <--> ST3
+    
+    Traefik --> FE & Java & Rust
+    Traefik --> FE_ST & Java_ST & Rust_ST
+    
+    FE --> Java & Rust
+    Java --> PG & Redis
+    Rust --> PG & Redis
+    
+    FE_ST --> Java_ST & Rust_ST
+    Java_ST --> PG_ST & Redis_ST
+    Rust_ST --> PG_ST & Redis_ST
+    
+    FE -.-> OTel
+    Java -.-> OTel
+    Rust -.-> OTel
+    FE_ST -.-> OTel
+    Java_ST -.-> OTel
+    Rust_ST -.-> OTel
+    
+    OTel --> Prom & Loki & Tempo
 ```
 
-## Isolasi Jaringan
+## Konfigurasi Network
 
 | Jaringan | Anggota | Tujuan |
 |----------|---------|--------|
-| `yomu-shared-network` | Semua infrastructure + semua apps | Service discovery, akses DB, telemetry |
-| `yomu-blue-network` | `frontend-blue`, `java-blue`, `rust-blue`, Traefik | Komunikasi internal Blue |
-| `yomu-green-network` | `frontend-green`, `java-green`, `rust-green`, Traefik | Komunikasi internal Green |
-| `yomu-staging-network` | `frontend-staging`, `java-staging`, `rust-staging`, Traefik | Komunikasi internal Staging |
+| `yomu-overlay-net` | Semua services (infra + prod + staging) | Service discovery, komunikasi internal, telemetry |
 
-### Aturan Isolasi
+### Overlay Network Setup
 
-- **Blue dan Green tidak bisa bicara langsung** — mereka tidak berbagi jaringan yang sama (kecuali shared).
-- Traefik adalah **satu-satunya gateway** yang menghubungkan keempat jaringan.
-- Routing ke Blue atau Green aktif hanya melalui file konfigurasi Traefik (`routing.yml`).
-- Staging menggunakan `Host(staging.yomu.my.id)` sehingga tidak pernah konflik dengan produksi (`yomu.my.id`).
+```bash
+# Buat overlay network sebelum deploy stack
+docker network create -d overlay --attachable yomu-overlay-net
+
+# Deploy stack dengan network
+docker stack deploy -c docker-compose.swarm.yml yomu
+```
+
+### Service Discovery
+
+Semua service discovery menggunakan **nama service Docker** dalam overlay network:
+
+- `frontend`, `java`, `rust` → Production services
+- `frontend-staging`, `java-staging`, `rust-staging` → Staging services
+- `postgres`, `redis` → Production database
+- `postgres-staging`, `redis-staging` → Staging database
+- `otel-collector`, `prometheus`, `grafana` → Observability
+
+Docker Swarm secara otomatis membuat DNS entries untuk setiap service name.
 
 ## Port Expose
 
@@ -81,29 +96,31 @@ flowchart LR
 | Traefik Web | :80 | :80 |
 | Traefik WebSecure | :443 | :443 |
 | Traefik Dashboard | :3001 | :8080 |
-| Prometheus | :9090 | :9090 |
+| Prometheus | — (via Traefik /prometheus) | :9090 |
 | Grafana | — (via Traefik /grafana) | :3000 |
-| Loki | :3100 | :3100 |
+| Loki | — (internal only) | :3100 |
 | Tempo | — (internal only) | :3200, :4317, :4318 |
 | OTEL Collector | — (internal only) | :4317, :4318, :8889 |
+| cAdvisor | — (internal only) | :8080 |
+| node-exporter | — (internal only) | :9100 |
 | postgres-exporter | — (internal only) | :9187 |
 | redis-exporter | — (internal only) | :9121 |
 
-**Aplikasi production, staging, blue, green** tidak memiliki port mapping ke host — semua akses melalui Traefik reverse proxy.
+**Semua aplikasi** tidak memiliki port mapping ke host — akses hanya melalui Traefik reverse proxy dengan routing subdomain.
 
 ## Routing Internal Antar Service
 
 ```mermaid
 sequenceDiagram
-    participant FE as frontend-blue
+    participant FE as frontend
     participant TF as Traefik
-    participant JB as java-blue
-    participant RB as rust-blue
+    participant JB as java
+    participant RB as rust
     participant PG as PostgreSQL
     participant RD as Redis
 
-    FE->>JB: CORE_API_BASE_URL=http://java-blue:8080
-    JB->>RB: RUST_ENGINE_BASE_URL=http://rust-blue:8080
+    FE->>JB: CORE_API_BASE_URL=http://java:8080
+    JB->>RB: RUST_ENGINE_BASE_URL=http://rust:8080
     JB->>PG: jdbc:postgresql://postgres:5432/yomu_db
     RB->>PG: DATABASE_URL=postgresql://.../yomu_engine
     RB->>RD: REDIS_URL=redis://redis:6379
@@ -111,13 +128,51 @@ sequenceDiagram
     RB->>RB: /metrics (Prometheus scrape)
 ```
 
-## Discovery
+### Routing Staging
 
-Semua service discovery menggunakan **nama service Docker** (bukan IP statis):
+```mermaid
+sequenceDiagram
+    participant FE as frontend-staging
+    participant TF as Traefik
+    participant JB as java-staging
+    participant RB as rust-staging
+    participant PG as postgres-staging
+    participant RD as redis-staging
 
-- `java-blue` → `yomu-blue-network`
-- `postgres` → `yomu-shared-network`
-- `redis` → `yomu-shared-network`
-- `otel-collector` → `yomu-shared-network`
+    FE->>JB: CORE_API_BASE_URL=http://java-staging:8080
+    JB->>RB: RUST_ENGINE_BASE_URL=http://rust-staging:8080
+    JB->>PG: jdbc:postgresql://postgres-staging:5432/yomu_db_staging
+    RB->>PG: DATABASE_URL=postgresql://.../yomu_engine_staging
+    RB->>RD: REDIS_URL=redis://redis-staging:6379
+```
 
-Docker Compose secara otomatis membuat DNS entries untuk setiap nama service pada setiap jaringan yang mereka ikuti.
+## Traefik Swarm Provider
+
+Traefik menggunakan **Docker Swarm provider** untuk auto-discovery services via labels:
+
+```yaml
+# traefik configuration
+providers:
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false
+    swarmModeRefreshSeconds: 5
+```
+
+### Service Labels
+
+Setiap service mendefinisikan routing via labels di `docker-compose.swarm.yml`:
+
+```yaml
+services:
+  frontend:
+    image: ghcr.io/yomu/frontend:latest
+    deploy:
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.frontend.rule=Host(`yomu.my.id`)"
+        - "traefik.http.routers.frontend.entrypoints=websecure"
+        - "traefik.http.routers.frontend.tls=true"
+```
+
+Traefik secara otomatis mendeteksi service baru dan update routing table tanpa restart.
