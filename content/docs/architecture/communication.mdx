@@ -115,18 +115,18 @@ Frontend Next.js mengagregasi data dari kedua layanan untuk menyediakan tampilan
 ```mermaid
 sequenceDiagram
     participant FE as Frontend
-    participant BFF as Next.js API
+    participant API as Next.js API
     participant RUST as Rust Engine
     participant JAVA as Java Core Service
 
-    FE->>BFF: GET /api/leaderboard
-    BFF->>RUST: GET /league/leaderboard
-    RUST-->>BFF: (user_id, score, clan_name)
-    BFF->>JAVA: POST /auth/users/by-ids
-    BFF->>JAVA: (ids array) [...] }
-    JAVA-->>BFF: (user_id, username, display_name)
-    BFF->>BFF: Gabung: leaderboard_entries
-    BFF-->>FE: { leaderboard: [ { user_id, score, username, rank } ] }
+    FE->>API: GET /api/leaderboard
+    API->>RUST: GET /league/leaderboard
+    RUST-->>API: (user_id, score, clan_name)
+    API->>JAVA: POST /auth/users/by-ids
+    API->>JAVA: (ids array) [...] }
+    JAVA-->>API: (user_id, username, display_name)
+    API->>API: Gabung: leaderboard_entries
+    API-->>FE: { leaderboard: [ { user_id, score, username, rank } ] }
 ```
 
 ### Agregasi Data Frontend

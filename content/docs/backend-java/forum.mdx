@@ -1,9 +1,9 @@
 ---
 title: Forum Diskusi
-description: Backend forum Java - komentar artikel, nested replies, reaction toggle, dan integrasi frontend BFF
+description: Backend forum Java - komentar artikel, nested replies, reaction toggle, dan integrasi frontend
 ---
 
-Modul forum menyediakan diskusi per artikel melalui komentar berjenjang, edit/delete komentar, dan reaction toggle. Implementasinya berada di package `forum` pada backend Java dan dipakai frontend melalui route handler BFF Next.js.
+Modul forum menyediakan diskusi per artikel melalui komentar berjenjang, edit/delete komentar, dan reaction toggle. Implementasinya berada di package `forum` pada backend Java dan diakses frontend melalui route handler Next.js.
 
 <Callout type="info">
 Overview backend Java sudah menyebut fitur forum, tetapi sebelumnya belum ada halaman khusus di sidebar. Halaman ini mendokumentasikan implementasi aktual di `yomu-backend-java/src/main/java/id/ac/ui/cs/advprog/yomubackendjava/forum`.
@@ -13,8 +13,8 @@ Overview backend Java sudah menyebut fitur forum, tetapi sebelumnya belum ada ha
 
 ```mermaid
 graph TD
-    FE["Next.js page<br/>/forums/[articleId]"] --> BFF["Next.js BFF<br/>/api/v1/forums/*"]
-    BFF --> CC["CommentController<br/>/api/v1/forums"]
+    FE["Next.js page<br/>/forums/[articleId]"] --> API["Next.js API Routes<br/>/api/v1/forums/*"]
+    API --> CC["CommentController<br/>/api/v1/forums"]
 
     CC --> CS["CommentService"]
     CC --> CRS["CommentReactionService"]
@@ -64,7 +64,7 @@ Semua response mengikuti kontrak umum:
 ```
 
 <Callout type="warning">
-Endpoint tulis mengambil user dari `CurrentUser`, sehingga token JWT wajib valid. Frontend tidak mengirim token dari JavaScript client; BFF membaca cookie `yomu_access_token` lalu meneruskan header `Authorization: Bearer <token>` ke backend Java.
+Endpoint tulis mengambil user dari `CurrentUser`, sehingga token JWT wajib valid. Frontend tidak mengirim token dari JavaScript client; route handler Next.js membaca cookie `yomu_access_token` lalu meneruskan header `Authorization: Bearer <token>` ke backend Java.
 </Callout>
 
 ## Model Data
@@ -195,22 +195,22 @@ Frontend forum berada di `yomu-frontend`:
 | `src/components/forum/CommentList.tsx` | Render nested comments, edit/delete, reply, upvote/downvote |
 | `src/components/forum/CommentForm.tsx` | Form create comment dan reply |
 | `src/lib/api/forum.ts` | Client typed untuk endpoint forum |
-| `src/app/api/v1/forums/**/route.ts` | BFF route handlers yang proxy ke Java |
+| `src/app/api/v1/forums/**/route.ts` | Route handlers yang berkomunikasi dengan Java |
 
 Alur request:
 
 ```mermaid
 sequenceDiagram
-    Browser->>Next.js BFF: GET /api/v1/forums/{articleId}/comments
-    Next.js BFF->>Java: GET /api/v1/forums/{articleId}/comments
-    Java->>Next.js BFF: ApiResponse<Comment[]>
-    Next.js BFF->>Browser: ApiResponse<Comment[]>
+    Browser->>Next.js API Routes: GET /api/v1/forums/{articleId}/comments
+    Next.js API Routes->>Java: GET /api/v1/forums/{articleId}/comments
+    Java->>Next.js API Routes: ApiResponse<Comment[]>
+    Next.js API Routes->>Browser: ApiResponse<Comment[]>
 
-    Browser->>Next.js BFF: POST /api/v1/forums/comments/{commentId}/reactions
-    Next.js BFF->>Next.js BFF: Baca cookie yomu_access_token
-    Next.js BFF->>Java: POST + Authorization Bearer token
-    Java->>Next.js BFF: ApiResponse<ReactionResponse>
-    Next.js BFF->>Browser: ApiResponse<ReactionResponse>
+    Browser->>Next.js API Routes: POST /api/v1/forums/comments/{commentId}/reactions
+    Next.js API Routes->>Next.js API Routes: Baca cookie yomu_access_token
+    Next.js API Routes->>Java: POST + Authorization Bearer token
+    Java->>Next.js API Routes: ApiResponse<ReactionResponse>
+    Next.js API Routes->>Browser: ApiResponse<ReactionResponse>
 ```
 
 `CommentList` juga memanggil endpoint `me()` untuk mengetahui user saat ini. Data tersebut dipakai untuk menentukan tombol edit/delete: pemilik komentar bisa edit, sedangkan pemilik atau `ADMIN` bisa delete.

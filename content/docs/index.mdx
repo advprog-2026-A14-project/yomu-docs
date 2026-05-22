@@ -28,7 +28,7 @@ Selamat datang di dokumentasi resmi Yomu. Yomu adalah platform pembelajaran poli
 <Cards>
   <Card
     title="Frontend"
-    description="Next.js 16 dengan pattern BFF, shadcn/ui, dan Google OAuth"
+    description="Next.js 16 dengan route handlers, shadcn/ui, dan Google OAuth"
     href="/docs/frontend"
   />
   <Card
@@ -106,8 +106,8 @@ Java dan Rust masing-masing memiliki database sendiri. Tidak ada query lintas da
 Jika engine Rust mati, operasi Java (registrasi, pengiriman kuis) tetap berhasil. Sinkronisasi yang gagal diantrekan dan dicoba ulang.
 </Callout>
 
-<Callout type="idea" title="BFF Pattern">
-Frontend Next.js tidak pernah memanggil backend secara langsung. Semua panggilan API mengalir melalui route handler sisi server yang mengelola cookie autentikasi.
+<Callout type="idea" title="API Routes Pattern">
+Frontend Next.js berkomunikasi dengan backend services melalui route handler yang mengelola autentikasi dan cookie.
 </Callout>
 
 ## Tech Stack

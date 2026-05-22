@@ -187,6 +187,6 @@ Modul action kosong yang memerlukan implementasi:
 
 ### Anti-pattern
 
-**Direct fetch dari test-java**: Halaman di `/app/test-java/page.tsx` melakukan panggilan langsung `fetch('http://localhost:8080')`, melanggar pattern BFF.
+**Direct fetch dari test-java**: Halaman di `/app/test-java/page.tsx` melakukan panggilan langsung `fetch('http://localhost:8080')`, melanggar prinsip arsitektur. Frontend seharusnya menggunakan route handler Next.js.
 
 **Rute auth duplikat**: Direktori `/app/auth/` dan `/app/(auth)/` keduanya ada, menciptakan duplikasi rute.

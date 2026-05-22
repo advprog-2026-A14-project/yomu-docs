@@ -1,6 +1,6 @@
 ---
 title: Frontend
-description: Frontend Next.js 16 dengan pattern BFF — React 19, Tailwind v4, shadcn/ui, dan Google OAuth
+description: Frontend Next.js 16 — React 19, Tailwind v4, shadcn/ui, dan Google OAuth
 ---
 
 # Frontend
@@ -9,15 +9,16 @@ Frontend Yomu dibangun dengan Next.js 16.1.6 dan React 19.2.3, menggunakan TypeS
 
 ## Architecture
 
-Frontend mengikuti pattern Backend-for-Frontend (BFF). Semua panggilan API melewati route handler Next.js, yang bertindak sebagai proxy ke layanan backend. Browser tidak pernah melakukan panggilan API langsung ke backend Java atau Rust.
+Frontend berkomunikasi langsung dengan backend services (Java di port 8080 untuk autentikasi dan konten, Rust di port 8081 untuk gamifikasi). Browser melakukan panggilan API langsung ke backend melalui route handler yang menangani autentikasi dan transformasi data.
 
 ```mermaid
 sequenceDiagram
     Browser->>Next.js:3000: HTTP Request
-    Next.js->>Next.js: Route Handler
-    Next.js->>Java:8080: REST API
+    Next.js->>Next.js: Server Component / Route Handler
+    Note right of Browser: Browser memanggil API routes<br/>Next.js meneruskan ke backend
+    Next.js->>Java:8080: REST API (Auth, Content)
     Java->>Next.js: ApiResponse<T>
-    Next.js->>Rust:8081: REST API (via BFF)
+    Next.js->>Rust:8081: REST API (Gamification)
     Rust->>Next.js: ApiResponse<T>
     Next.js->>Browser: Rendered Page or Data
 ```
@@ -48,7 +49,7 @@ sequenceDiagram
 | `/dashboard/missions` | Pelacakan misi | Stub kosong |
 | `/dashboard/achievements` | Pameran pencapaian | Stub kosong |
 | `/dashboard/leaderboard` | Tampilan leaderboard | Stub kosong |
-| `/api/v1/*` | Rute proxy BFF | Route handler |
+| `/api/v1/*` | Route handler | Route handler |
 
 ## Dependensi Utama
 
@@ -61,5 +62,5 @@ sequenceDiagram
 
 ## Struktur Dokumentasi
 
-- [`bff-auth.mdx`](/docs/frontend/bff-auth) — Architecture BFF dan alur autentikasi
+- [`auth.mdx`](/docs/frontend/auth) — Architecture dan alur autentikasi
 - [`components.mdx`](/docs/frontend/components) — Pustaka komponen UI dan komponen kustom

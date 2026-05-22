@@ -31,7 +31,7 @@ flowchart TD
     subgraph "Frontend Layer"
         FE["Next.js (Client Side)"]
         SSR["Next.js (Server Side Render)"]
-        BFF[Next.js API Routes]
+        API["Next.js API Routes"]
     end
 
     subgraph "Core Service Layer"
@@ -45,10 +45,10 @@ flowchart TD
         REDIS[(Redis Cache)]
     end
 
-    FE --> BFF
-    SSR --> BFF
-    BFF -->|HTTP/JSON| JAVA
-    BFF -->|HTTP/JSON| RUST
+    FE --> API
+    SSR --> API
+    API -->|HTTP/JSON| JAVA
+    API -->|HTTP/JSON| RUST
     JAVA --> CORE_DB
     RUST --> ENGINE_DB
     RUST --> REDIS
@@ -61,7 +61,7 @@ flowchart TD
 
 #### Lapisan Frontend (Next.js 16)
 - **Server-Side Rendering** — Halaman yang di-pre-render untuk SEO dan initial load yang cepat
-- **API Routes sebagai BFF** — pattern Backend for Frontend mengonsolidasikan panggilan backend
+- **API Routes** — Route handler Next.js untuk komunikasi dengan backend services
 - **Static Generation** — Halaman artikel dibuat saat build time untuk performa optimal
 - **Client Components** — Elemen UI interaktif menggunakan React hooks dan manajemen state
 
@@ -79,11 +79,11 @@ flowchart TD
 
 ## Interaksi Sistem
 
-### pattern BFF (Backend for Frontend)
+### Direct API Communication
 
-Semua request frontend ke layanan backend melewati lapisan API routes Next.js. Ini memberikan beberapa keuntungan:
+Frontend berkomunikasi langsung dengan backend services melalui API routes Next.js. Ini memberikan beberapa keuntungan:
 
-- **Single entry point** — Frontend tidak pernah memanggil layanan backend secara langsung, menyederhanakan CORS dan autentikasi
+- **Single entry point** — API routes menyediakan统一的 interface untuk frontend
 - **Konsolidasi request** — Menggabungkan data dari beberapa layanan backend ke dalam response tunggal
 - **Penegakan autentikasi** — Validasi JWT terpusat sebelum mencapai layanan backend
 - **Transformasi response** — Menormalisasi format response yang berbeda dari Java dan Rust
@@ -91,18 +91,18 @@ Semua request frontend ke layanan backend melewati lapisan API routes Next.js. I
 ```mermaid
 sequenceDiagram
     participant FE as Frontend
-    participant BFF as Next.js API
+    participant API as Next.js API
     participant JAVA as Java Core Service
     participant RUST as Rust Engine Service
 
-    FE->>BFF: GET /api/leaderboard
-    BFF->>BFF: Validate JWT
-    BFF->>RUST: GET /league/leaderboard
-    RUST-->>BFF: JSON (success, message, data)
-    BFF->>JAVA: GET /users/me
-    JAVA-->>BFF: JSON (success, message, data)
-    BFF->>FE: GET /leaderboard
-    Note over BFF,FE: Merge data: user info + leaderboard
+    FE->>API: GET /api/leaderboard
+    API->>API: Validate JWT
+    API->>RUST: GET /league/leaderboard
+    RUST-->>API: JSON (success, message, data)
+    API->>JAVA: GET /users/me
+    JAVA-->>API: JSON (success, message, data)
+    API->>FE: GET /leaderboard
+    Note over API,FE: Merge data: user info + leaderboard
 ```
 
 ### Detail Alur Komunikasi

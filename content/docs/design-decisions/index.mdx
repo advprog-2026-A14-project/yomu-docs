@@ -225,7 +225,7 @@ Kami mengevaluasi penggunaan Architecture yang sama untuk kedua backend dan meno
 | Polyglot (Java + Rust) | Optimalkan setiap layanan untuk beban kerjanya | Microservices bahasa tunggal | Performa terbaik untuk gamifikasi, ekosistem matang untuk auth | Kompleksitas deployment, panggilan antar-layanan |
 | Berbasis layanan (bukan pure microservices) | Infrastruktur messaging minimal | Kafka/RabbitMQ | Operasi lebih sederhana, pattern outbox untuk konsistensi | Jendela eventual consistency |
 | Clean Architecture (hanya Rust) | Testabilitas, maintainabilitas, pemisahan lapisan untuk logika gamifikasi kompleks | Layered Architecture untuk Rust | Logika domain terisolasi, batasan ditegakkan compiler, mudah di-mock | Boilerplate tinggi: traits + DTOs + mappers per fitur |
-| pattern BFF (Next.js API) | Sembunyikan kompleksitas backend dari frontend | Panggilan langsung frontend → backend | Auth terpusat, pemformatan response, caching | Hop ekstra, beban server Next.js |
+| Pattern API Routes (Next.js) | Next.js API routes sebagai entry point untuk komunikasi dengan backend | Panggilan langsung frontend → backend | Auth terpusat, pemformatan response, routing terorganisir | Hop ekstra, beban server Next.js |
 
 ## Sub-Halaman
 

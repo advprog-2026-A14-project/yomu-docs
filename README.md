@@ -155,7 +155,7 @@ Dokumentasi mendukung komponen-komponen berikut:
 
 Diagram kontainer di atas menggambarkan arsitektur Level 2 C4 Model untuk platform Yomu. Diagram ini menunjukkan:
 
-- **Web Application** (Next.js 16) — Frontend BFF yang berkomunikasi dengan Java dan Rust backend
+- **Web Application** (Next.js 16) — Frontend yang berkomunikasi dengan Java dan Rust backend
 - **Java Core Service** (Spring Boot 4) — Autentikasi, artikel & kuis, forum, outbox sync ke Rust
 - **Rust Engine Service** (Axum 0.8.8) — Gamifikasi, clan, leaderboard (Redis), achievement, missions
 - **Core DB** (PostgreSQL) — Database Java untuk users, artikel, kuis, forum, outbox/failed sync
@@ -174,7 +174,7 @@ graph TD
 graph TB
     subgraph Frontend_Squad ["Tim Web Experience (Frontend Owner)"]
         UI["Next.js (Client & SSR)"]
-        BFF["Next.js API Routes (BFF)"]
+        API["Next.js API Routes"]
     end
 
     subgraph Core_Squad ["Tim Core & Content (Java Owner)"]
@@ -197,17 +197,17 @@ graph TB
     end
 
     %% Relasi Alur Komunikasi
-    UI -->|HTTP/JSON| BFF
-    BFF -->|REST API| Auth
-    BFF -->|REST API| Content
-    BFF -->|REST API| Gamification
-    
+    UI -->|HTTP/JSON| API
+    API -->|REST API| Auth
+    API -->|REST API| Content
+    API -->|REST API| Gamification
+
     Auth --> CoreDB
     Content --> CoreDB
     Gamification --> EngineDB
     Gamification --> Redis
     League --> EngineDB
-    
+
     Auth -.->|Generate Event| Outbox
     Outbox -.->|Webhook Push| Gamification
     Gamification -.->|Sync Pull| Auth
@@ -218,7 +218,7 @@ graph TB
     classDef engagement fill:#e91e63,stroke:#880e4f,stroke-width:2px,color:#fff;
     classDef platform fill:#ff9800,stroke:#e65100,stroke-width:2px,color:#fff;
 
-    class UI,BFF frontend;
+    class UI,API frontend;
     class Auth,Content,CoreDB core;
     class Gamification,League,EngineDB,Redis engagement;
     class Outbox,Monitor,EC2 platform;
@@ -245,7 +245,7 @@ flowchart TB
         direction TB
         Next["Artifact: Next.js 16 Standalone Server<br/>Node runtime<br/>Port :3000"]
         Pages["Artifact: App Router Pages<br/>React 19 + Tailwind + shadcn/ui"]
-        BFF["Artifact: Next Route Handlers / BFF<br/>/api/v1/auth<br/>/api/v1/users<br/>/api/v1/forums"]
+        API["Artifact: Next Route Handlers / API Routes<br/>/api/v1/auth<br/>/api/v1/users<br/>/api/v1/forums"]
         Cookie[("HttpOnly Auth Cookie<br/>AUTH_COOKIE_NAME<br/>sameSite=lax")]
         Mock[("Local Mock Data<br/>articles / quizzes")]
       end
@@ -292,14 +292,14 @@ flowchart TB
   Internet -->|":80 / :443"| Nginx
   Nginx -->|"proxy /"| Next
   Next --> Pages
-  Pages -->|"same-origin fetch<br/>/api/v1/..."| BFF
+  Pages -->|"same-origin fetch<br/>/api/v1/..."| API
   Pages <-->|"Google sign-in popup / token"| Google
-  BFF -->|"set / clear cookie"| Cookie
-  User -->|"sends cookie automatically"| BFF
+  API -->|"set / clear cookie"| Cookie
+  User -->|"sends cookie automatically"| API
   Pages -->|"read quiz / catalog data"| Mock
 
   %% Frontend to Java Core Backend
-  BFF -->|"REST + JWT<br/>/api/v1/auth<br/>/api/v1/users<br/>/api/v1/articles<br/>/api/v1/quizzes<br/>/api/v1/forums"| JavaApp
+  API -->|"REST + JWT<br/>/api/v1/auth<br/>/api/v1/users<br/>/api/v1/articles<br/>/api/v1/quizzes<br/>/api/v1/forums"| JavaApp
 
   %% Java Core to Database and External Services
   JavaApp -->|"JDBC / HikariCP"| JavaDB
@@ -312,7 +312,7 @@ flowchart TB
   RustApp -->|"internal REST + x-api-key<br/>/api/internal/articles/{article_id}/exists"| JavaApp
 
   %% Optional direct frontend to Rust Engine from env
-  BFF -.->|"RUST_ENGINE_URL exists<br/>optional / planned direct call"| RustApp
+  API -.->|"RUST_ENGINE_URL exists<br/>optional / planned direct call"| RustApp
 
   %% Rust Engine Persistence and Observability
   JavaDB --- CorePgVol
@@ -357,7 +357,7 @@ flowchart TB
   class User user;
   class Google external;
   class EC2,PROD host;
-  class Next,Pages,BFF,FRONT_CONT frontend;
+  class Next,Pages,API,FRONT_CONT frontend;
   class JavaApp,Scheduler,Env,Secret,JAVA_CONT java;
   class RustApp,RUST_CONT rust;
   class JavaDB,RustDB,Redis,CorePgVol,EnginePgVol,RedisVol,Cookie,Mock data;
@@ -381,7 +381,7 @@ flowchart TB
   %% System boundary
   subgraph Yomu_System ["Sistem Yomu<br/>(Platform Pembelajaran Poliglot)"]
     subgraph Frontend_Section ["Frontend"]
-      FE["Yomu Frontend<br/>(Next.js App Router & BFF)"]
+      FE["Yomu Frontend<br/>(Next.js App Router & API Routes)"]
     end
 
     subgraph Core_Section ["Java Core System"]
@@ -444,7 +444,7 @@ flowchart TB
 
 ### Translate & Localization
 
-Semua konten dokumentasi ditulis dalam Bahasa Indonesia. Istilah teknis (JWT, OAuth, REST, API, BFF, DTO, CRUD, CI/CD, Redis, PostgreSQL, Docker, Kubernetes, Java, Rust, Next.js, Spring Boot, Axum, SQLx, JPA, Hibernate, dll.) tetap dalam Bahasa Inggris. Hanya narasi, penjelasan, deskripsi, dan heading yang diterjemahkan.
+Semua konten dokumentasi ditulis dalam Bahasa Indonesia. Istilah teknis (JWT, OAuth, REST, API, DTO, CRUD, CI/CD, Redis, PostgreSQL, Docker, Kubernetes, Java, Rust, Next.js, Spring Boot, Axum, SQLx, JPA, Hibernate, dll.) tetap dalam Bahasa Inggris. Hanya narasi, penjelasan, deskripsi, dan heading yang diterjemahkan.
 
 ## Deployment
 
@@ -555,7 +555,7 @@ login — tidak ada username/password tradisional.
 secara terpisah).
 
 **Yang ditunjukkan:**
-- **Next.js Frontend** sebagai BFF (Backend for Frontend) yang menjadi satu-satunya pintu masuk
+- **Next.js Frontend** sebagai API routes yang berkomunikasi dengan backend services
   bagi user
 - **Java Core Service** menangani domain utama: auth, artikel, kuis, forum
 - **Rust Engine** menangani domain gamifikasi: clan, leaderboard, achievement, misi
@@ -583,7 +583,7 @@ untuk isolasi domain (lihat Design Decisions di dokumentasi).
 **Yang ditunjukkan:**
 - Pembagian tim menjadi 4 squad: Frontend, Core, Engagement, Platform
 - Rencana pemisahan tanggung jawab yang lebih jelas antar squad
-- Pola komunikasi: Frontend → BFF → masing-masing service; Java ↔ Rust via Outbox + Webhook
+- Pola komunikasi: Frontend → API Routes → masing-masing service; Java ↔ Rust via Outbox + Webhook
 
 **Poin penting:** Diagram ini adalah **target arsitektur**, bukan kondisi saat ini. Transisi dari
 deployment single-EC2 ke arsitektur ini memerlukan orkestrasi container (Kubernetes atau ECS).

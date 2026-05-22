@@ -15,7 +15,7 @@ Halaman ini merangkum istilah-istilah teknis, Architectureal, dan domain-specifi
 Milestone gamifikasi yang dapat diunlock oleh pengguna setelah memenuhi kriteria tertentu (misalnya menyelesaikan 100 kuis). Setiap achievement memiliki tipe (Common, Rare, Epic, Legendary), poin reward, dan target milestone.
 
 ### API Composition
-pattern di mana Next.js BFF menggabungkan data dari multiple backend services (Java + Rust) menjadi satu response unified. Frontend tidak perlu membuat multiple request ke backend.
+Pattern di mana Next.js API routes menggabungkan data dari multiple backend services (Java + Rust) menjadi satu response unified. Frontend tidak perlu membuat multiple request ke backend.
 
 ### Async-Trait
 Crate Rust yang memungkinkan definisi async method di dalam trait. Digunakan di Rust backend untuk repository traits seperti `ClanRepository` dan `AchievementRepository`.
@@ -31,7 +31,7 @@ Web framework Rust yang digunakan di Yomu Engine Service. Dibangun di atas Tower
 Modul Java legacy untuk artikel dan kuis. Controller-nya (`BacaanKuisController`) telah di-mark @Deprecated; gunakan `ArticleController` dan `QuizController` sebagai pengganti.
 
 ### Backend-for-Frontend (BFF)
-pattern Architecture di mana Next.js API routes berfungsi sebagai perantara antara browser dan backend services. Frontend tidak pernah memanggil backend langsung — semua request melewati route handlers Next.js yang mengelola autentikasi cookies, aggregasi data, dan transformasi response.
+Pattern architecture di mana Next.js API routes berfungsi sebagai perantara antara browser dan backend services. Frontend berkomunikasi dengan backend melalui route handlers Next.js yang mengelola autentikasi cookies, aggregasi data, dan transformasi response.
 
 ### Blue-Green Deployment
 Strategi deployment zero-downtime di mana dua environment identik (blue dan green) berjalan bersamaan. Traffic dialihkan dari blue ke green setelah green diverifikasi sehat, memungkinkan rollback instan jika terjadi masalah.
@@ -104,7 +104,7 @@ Model konsistensi data di mana perubahan propagate secara asynchronous dan mungk
 Database migration tool untuk Java backend. Script migrasi SQL disimpan di `src/main/resources/db/migration/` dan dijalankan otomatis saat aplikasi Spring Boot start.
 
 ### Frontend Layer
-Layer UI Yomu yang dibangun dengan Next.js 16 dan React 19. Terdiri dari Server Components (rendering, data fetching), Client Components (interaktivitas), dan API Routes (BFF handlers).
+Layer UI Yomu yang dibangun dengan Next.js 16 dan React 19. Terdiri dari Server Components (rendering, data fetching), Client Components (interaktivitas), dan API Routes (route handlers).
 
 ### Fumadocs
 Framework dokumentasi yang digunakan oleh Yomu Docs. Dibangun di atas Next.js, menyediakan: auto-generated navigation, MDX support, built-in search (`/api/search`), dan komponen UI seperti Cards, Callout, Steps, dan Mermaid diagram rendering.
@@ -189,7 +189,7 @@ Versi Rust minimum yang didukung oleh project. Yomu Rust mensyaratkan Rust 1.85 
 Test runner Rust dengan parallel execution. Yomu menggunakan nextest untuk menjalankan test binaries secara parallel (7 test binaries, 2 retries, timeout 120 detik) di CI pipeline Rust.
 
 ### Next.js
-Framework React untuk frontend dan BFF layer. Yomu menggunakan Next.js 16.2.4 dengan App Router, Server Components, API Routes, dan standalone output mode untuk Docker deployment.
+Framework React untuk frontend. Yomu menggunakan Next.js 16.2.4 dengan App Router, Server Components, API Routes, dan standalone output mode untuk Docker deployment.
 
 ### No Shared State
 Prinsip Architectureal Yomu di mana setiap service memiliki database sendiri. Tidak ada cross-database queries, tidak ada shared cache, dan tidak ada distributed transactions. Semua pertukaran data melalui REST API atau event sync.
@@ -249,7 +249,7 @@ Format JSON uniform di semua Yomu APIs:
 ```json
 { "success": true, "message": "...", "data": {} }
 ```
-Frontend dan BFF mengandalkan field `success` untuk branching logic tanpa harus parse error structures yang berbeda-beda.
+Frontend dan API routes mengandalkan field `success` untuk branching logic tanpa harus parse error structures yang berbeda-beda.
 
 ### Role-Based Access Control (RBAC)
 Sistem otorisasi berbasis role. Yomu mendefinisikan roles: `ADMIN`, `PELAJAR`, `GUEST`. Setiap role memiliki access permissions yang berbeda. JWT claims mencakup `role` field untuk RBAC enforcement.
@@ -337,7 +337,6 @@ Redis commands untuk mendapatkan rank member di sorted set. `ZREVRANK` mengembal
 
 | Istilah | Definisi Singkat |
 |---------|------------------|
-| **BFF** | Backend-for-Frontend — Next.js API routes sebagai proxy layer |
 | **CORS** | Cross-Origin Resource Sharing — dihandle oleh Tower-HTTP middleware di Rust |
 | **DTO** | Data Transfer Object — request/response structs untuk API contracts |
 | **HATEOAS** | Hypermedia as the Engine of Application State — REST principle di Java API |

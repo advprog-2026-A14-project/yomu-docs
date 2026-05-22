@@ -1,20 +1,19 @@
 ---
-title: pattern BFF & Autentikasi
-description: Architecture proxy Backend-for-Frontend dan alur autentikasi
+title: Autentikasi
+description: Architecture dan alur autentikasi frontend Yomu
 ---
 
-# pattern BFF & Autentikasi
+# Autentikasi
 
-Frontend mengimplementasikan pattern Architecture Backend-for-Frontend (BFF), di mana Next.js bertindak sebagai perantara antara browser dan layanan backend (layanan auth Java di port 8080, layanan gamifikasi Rust di port 8081).
+Frontend Yomu berkomunikasi langsung dengan backend services. Autentikasi ditangani oleh Java Spring Boot di port 8080, sementara data pengguna diperkaya dari Rust Engine di port 8081 untuk fitur gamifikasi.
 
-## Architecture BFF
+## Architecture Autentikasi
 
-Semua request API dari browser melewati route handler Next.js. pattern ini menyediakan:
+Frontend menggunakan route handler Next.js untuk menangani autentikasi. Semua operasi sensitif (seperti handling token OAuth) tetap di sisi server. Pattern ini menyediakan:
 
-- **Keamanan**: Operasi sensitif (seperti handling token OAuth) tetap di sisi server
-- **Agregasi**: Satu request dapat mengambil data dari beberapa backend
+- **Keamanan**: Token JWT disimpan dalam HTTP-only cookie, tidak pernah diekspos ke JavaScript
 - **Validasi**: Validasi response terpusat melalui `ApiResponse<T>`
-- **Manajemen Sesi**: HTTP-only cookie mencegah eksposur token
+- **Manajemen Sesi**: HTTP-only cookie mencegah XSS attacks
 
 ```mermaid
 sequenceDiagram
@@ -28,22 +27,22 @@ sequenceDiagram
     Java->>Next.js: Sumber daya terproteksi
 ```
 
-## Modul Proxy Inti
+## Modul API Inti
 
-### coreProxy.ts
+### coreFetch.ts
 
-Modul server-only yang menyediakan fondasi untuk semua panggilan API:
+Modul server-only yang menyediakan fondasi untuk semua panggilan API ke backend:
 
 ```typescript
-// src/lib/server/coreProxy.ts
+// src/lib/server/coreFetch.ts
 export async function coreFetch(path: string, init?: RequestInit) {
   const response = await fetch(`${CORE_API_BASE_URL}${path}`, init);
-  return await responsee.json<ApiResponse<T>>();
+  return await response.json<ApiResponse<T>>();
 }
 ```
 
 **Perilaku utama**:
-- Memanggil `CORE_API_BASE_URL${path}` (env variable)
+- Memanggil `CORE_API_BASE_URL${path}` (env variable untuk Java backend)
 - Memvalidasi struktur response `ApiResponse<T>`
 - Mengembalikan JSON yang sudah diparse dengan field success/message/data
 
@@ -83,17 +82,17 @@ Lokasi: `src/lib/api/auth.ts`
 | `me()` | Dapatkan pengguna saat ini (terproteksi) |
 | `logout()` | Hapus cookie dan sesi |
 
-## pattern Client Fetcher
+## Client Fetcher
 
 Lokasi: `src/lib/api/fetcher.ts`
 
 ```typescript
 export async function apiFetch<T>(path: string, options?: RequestInit) {
   const response = await fetch(path, options);
-  const data = await responsee.json<ApiResponse<T>>();
-  
+  const data = await response.json<ApiResponse<T>>();
+
   if (!data.success) throw new Error(data.message);
-  
+
   return data.data;
 }
 ```
@@ -118,10 +117,10 @@ Rute di `/app` dan `/admin` memeriksa autentikasi saat mount:
 
 export default function ProtectedPage() {
   const { data: user, isLoading } = useQuery({ queryKey: ['me'], queryFn: me });
-  
+
   if (isLoading) return <Loading />;
   if (!user) redirect('/auth/login'); // redirect 401
-  
+
   // Lanjutkan rendering...
 }
 ```
@@ -133,7 +132,7 @@ export default function ProtectedPage() {
 | `ADMIN` | `/admin` |
 | `PELAJAR` | `/app` |
 
-## pattern Route Handler
+## Route Handler
 
 Semua handler `/api/v1/*` mengikuti struktur ini:
 
@@ -141,18 +140,18 @@ Semua handler `/api/v1/*` mengikuti struktur ini:
 // src/app/api/v1/auth/login/route.ts
 export async function POST(request: Request): Promise<Response> {
   const body = await request.json();
-  const responsee = await coreFetch('/api/v1/auth/login', {
+  const response = await coreFetch('/api/v1/auth/login', {
     method: 'POST',
     body: JSON.stringify(body),
   });
-  
+
   // Set cookie jika login berhasil
-  if (responsee.success && responsee.data.access_token) {
+  if (response.success && response.data.access_token) {
     // Set httpOnly cookie
-    return NextResponse.json(responsee);
+    return NextResponse.json(response);
   }
-  
-  return NextResponse.json(responsee, { status: 401 });
+
+  return NextResponse.json(response, { status: 401 });
 }
 ```
 

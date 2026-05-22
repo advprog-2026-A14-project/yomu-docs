@@ -147,7 +147,7 @@ Wrapper ini mendukung tiga factory:
     Manajemen profil, batch lookup, perubahan password, dan soft delete akun
   </Card>
   <Card title="Forum Diskusi" href="/docs/backend-java/forum">
-    Komentar artikel, nested replies, reaction toggle, dan integrasi frontend BFF
+    Komentar artikel, nested replies, reaction toggle, dan integrasi frontend
   </Card>
   <Card title="Outbox Pattern" href="/docs/backend-java/outbox">
     Sinkronisasi fault-tolerant ke engine Rust melalui retry terjadwal
@@ -162,5 +162,5 @@ Wrapper ini mendukung tiga factory:
 - **Port**: 8080
 
 <Callout type="info">
-Backend Java adalah entry point utama untuk semua request frontend. Frontend TIDAK BOLEH memanggil backend Rust secara langsung (8081) — gunakan pattern BFF Java sebagai gantinya.
+Backend Java menangani autentikasi dan konten. Frontend berkomunikasi langsung dengan backend services sesuai konfigurasi environment.
 </Callout>

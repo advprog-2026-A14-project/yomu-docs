@@ -12,7 +12,7 @@ Yomu menggunakan beberapa bahasa pemrograman dan framework karena setiap domain 
 |--------|------------|-----------|
 | **Autentikasi & Manajemen Pengguna** | Java Spring Boot | Ekosistem keamanan yang matang, pustaka JWT yang solid, dukungan transaksi yang kuat, ekosistem ekstensif untuk fitur enterprise |
 | **Gamifikasi & Leaderboard** | Rust Axum | Komputasi performa tinggi (kalkulasi skor, peringkat), keamanan memori untuk request konkuren, abstraksi zero-cost untuk pembaruan real-time |
-| **Frontend & Komposisi API** | Next.js | Server-side rendering untuk SEO, ekosistem React untuk desain komponen, API routes sebagai lapisan BFF, static generation untuk halaman konten cepat |
+| **Frontend & Komposisi API** | Next.js | Server-side rendering untuk SEO, ekosistem React untuk desain komponen, API routes untuk komunikasi dengan backend, static generation untuk halaman konten cepat |
 
 <Callout type="info">
 Layanan gamifikasi Rust dipilih secara spesifik karena kemampuannya menangani kalkulasi leaderboard real-time dengan latensi sub-milidetik, sebuah kebutuhan kritis untuk keterlibatan pengguna dalam skenario pembelajaran kompetitif.
@@ -140,7 +140,7 @@ Setiap layanan mengekspos kontrak API yang terdefinisi dengan baik:
 
 - **Java Core Service** — REST HTTP/1.1 dengan payload JSON
 - **Rust Engine Service** — REST HTTP/1.1 dengan payload JSON, gRPC opsional untuk penggunaan internal
-- **Frontend → Backend** — Next.js API routes sebagai lapisan BFF
+- **Frontend → Backend** — Next.js API routes berkomunikasi dengan backend services
 
 ### Standar Format Response
 
